@@ -1,10 +1,10 @@
 import React from 'react'
 import { client } from '@/sanity/lib/client'
-import ProductDetails from '@/components/ProductDetails' 
+import ProductDetails from '@/components/ProductDetails'
+import { notFound } from 'next/navigation'
 
+// 👇 Fetch Function (Ye sahi tha, bas slug pass hone ka wait kar raha tha)
 async function getProduct(slug: string) {
-  // 👇 FIX: "images": image[].asset->url HATA DIYA.
-  // Hum seedha raw 'image' array le rahe hain taaki component usse handle kare.
   const query = `*[_type == "product" && slug.current == $slug][0]{
     _id,
     title,
@@ -12,7 +12,7 @@ async function getProduct(slug: string) {
     originalPrice,
     description,
     stockQuantity,
-    image,  // 👈 IMPORTANT: Raw Image Array fetch karo (Schema name: 'image')
+    image,
     category,
     "slug": slug.current
   }`
@@ -21,8 +21,17 @@ async function getProduct(slug: string) {
   return product
 }
 
-export default async function SingleProductPage({ params }: { params: { slug: string } }) {
-  const product = await getProduct(params.slug)
+// 👇 TYPE CHANGE: params ab Promise hai
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function SingleProductPage({ params }: PageProps) {
+  // 👇 FIX: Pehle params ko Await karein
+  const { slug } = await params;
+
+  // Ab slug use karein
+  const product = await getProduct(slug)
 
   if (!product) {
      return (
