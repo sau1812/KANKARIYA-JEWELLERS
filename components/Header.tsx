@@ -51,10 +51,7 @@ const Header = () => {
                 <SearchBar />
             </div>
 
-            {/* Search Icon (Mobile) */}
-            <button className="md:hidden p-2 text-stone-700 hover:text-black transition-colors">
-                <Search className="w-5 h-5" strokeWidth={1.5} />
-            </button>
+          
 
             {/* --- USER ACTIONS (Login/Profile) --- */}
             {/* 👇 Mobile par bhi dikhana zaroori hai isliye 'hidden' hata diya */}
