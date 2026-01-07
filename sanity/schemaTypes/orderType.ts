@@ -1,0 +1,199 @@
+import { BasketIcon } from "@sanity/icons";
+import { defineArrayMember, defineField, defineType } from 'sanity';
+
+export default defineType({
+  name: 'order',
+  title: 'Orders',
+  type: 'document',
+  icon: BasketIcon,
+  fields: [
+    // --- 1. ORDER & CUSTOMER INFO ---
+    defineField({
+      name: "orderNumber", // Changed from "ordernumber" to camelCase
+      title: "Order Number",
+      type: "string",
+      validation: (Rule) => Rule.required(),
+    }),
+    
+    // Invoice Object
+    defineField({
+      name: "invoice",
+      title: "Invoice Details",
+      type: "object",
+      fields: [
+        { name: "id", title: "Invoice ID", type: "string" },
+        { name: "invoiceNumber", title: "Invoice Number", type: "string" },
+        { name: "hosted_invoice_url", title: "Invoice URL", type: "url" },
+      ],
+    }),
+
+    // Stripe & Clerk IDs (Backend Tracking)
+    defineField({
+      name: "stripeCheckoutSessionId",
+      title: "Stripe Checkout Session ID",
+      type: "string",
+    }),
+    defineField({
+      name: "stripeCustomerId",
+      title: "Stripe Customer ID",
+      type: "string",
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "clerkUserId",
+      title: "Clerk User ID",
+      type: "string",
+      validation: (Rule) => Rule.required(),
+    }),
+
+    // Customer Details
+    defineField({
+      name: 'customerName', // Renamed from "Name" to be specific
+      title: 'Customer Name',
+      type: 'string',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "email",
+      title: "Email Address",
+      type: "string",
+      validation: (Rule) => Rule.required().email(),
+    }),
+    defineField({
+      name: 'phone',
+      title: 'Phone Number',
+      type: 'string',
+    }),
+
+    // --- 2. PAYMENT INFO ---
+    defineField({
+      name: "stripePaymentIntentId",
+      title: "Stripe Payment Intent ID",
+      type: "string",
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "totalPrice",
+      title: "Total Price",
+      type: "number",
+      validation: (Rule) => Rule.required().min(0),
+    }),
+    defineField({
+      name: "currency",
+      title: "Currency",
+      type: "string",
+      initialValue: "INR",
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "amountDiscount",
+      title: "Amount Discount",
+      type: "number",
+      initialValue: 0,
+    }),
+
+    // --- 3. PRODUCTS BOUGHT ---
+    defineField({
+      name: "products",
+      title: "Products",
+      type: "array",
+      of: [
+        defineArrayMember({
+          type: "object",
+          fields: [
+            defineField({
+              name: "product",
+              title: "Product Bought",
+              type: "reference",
+              to: [{ type: "product" }],
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({
+              name: "quantity",
+              title: "Quantity Purchased",
+              type: "number",
+              initialValue: 1,
+            }),
+          ],
+          preview: {
+            select: {
+              productTitle: "product.title", // Ensure this matches your Product schema title field
+              quantity: "quantity",
+              image: "product.image",
+              price: "product.price",
+            },
+            prepare(select) {
+              return {
+                // FIXED: Used backticks (`) instead of single quotes (')
+                title: `${select.productTitle} (x${select.quantity})`,
+                subtitle: `Price: ₹${select.price}`,
+                media: select.image && select.image[0],
+              };
+            },
+          },
+        }),
+      ],
+    }),
+
+    // --- 4. SHIPPING ADDRESS ---
+    defineField({
+      name: "shippingAddress", // Renamed from "address" to avoid confusion
+      title: "Shipping Address",
+      type: "object",
+      fields: [
+        { name: "name", title: "Name", type: "string" },
+        { name: "address", title: "Street Address", type: "string" },
+        { name: "city", title: "City", type: "string" },
+        { name: "state", title: "State", type: "string" },
+        { name: "pinCode", title: "Pin Code", type: "string" },
+        { name: "phone", title: "Phone Number", type: "string" },
+      ],
+    }),
+
+    // --- 5. STATUS & DATE ---
+    defineField({
+      name: "status",
+      title: "Order Status",
+      type: "string",
+      options: {
+        list: [
+          { title: "Pending", value: "pending" },
+          { title: "Processing", value: "processing" },
+          { title: "Shipped", value: "shipped" },
+          { title: "Delivered", value: "delivered" },
+          { title: "Cancelled", value: "cancelled" },
+        ],
+      },
+      initialValue: "pending",
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "orderDate",
+      title: "Order Date",
+      type: "datetime",
+      initialValue: () => new Date().toISOString(), // FIXED: Made it a function
+      validation: (Rule) => Rule.required(),
+    }),
+  ],
+
+  // --- MAIN PREVIEW (Dashboard List) ---
+  preview: {
+    select: {
+      name: "customerName",
+      amount: "totalPrice",
+      currency: "currency",
+      orderId: "orderNumber",
+      email: "email",
+    },
+    prepare(select) {
+      const orderIdSnippet = select.orderId ? `${select.orderId.slice(0, 5)}...${select.orderId.slice(-5)}` : 'No ID';
+      
+      return {
+        // FIXED: Used backticks (`) for variable injection
+        title: `${select.name} (${orderIdSnippet})`,
+        subtitle: `₹${select.amount} ${select.currency} - ${select.email}`,
+        media: BasketIcon,
+      };
+    },
+  },
+});
