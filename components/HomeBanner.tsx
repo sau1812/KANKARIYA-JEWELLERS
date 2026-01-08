@@ -99,14 +99,14 @@ async function HomeBanner() {
 
             <div className="flex gap-4 animate-float" style={{ animationDelay: '0.4s' }}>
               <Link 
-                href="/catalog" 
+                href="/deal" 
                 className="group flex items-center gap-2 bg-rose-500 text-white px-6 py-2.5 md:px-8 md:py-3 rounded-full font-medium hover:bg-rose-600 transition-all duration-300 shadow-lg"
               >
                 Shop Now
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link 
-                href="/about" 
+                href="/deal" 
                 className="flex items-center gap-2 bg-white border border-rose-200 text-rose-900 px-6 py-2.5 md:px-8 md:py-3 rounded-full font-medium hover:bg-rose-50 transition-all duration-300 shadow-sm"
               >
                 Lookbook

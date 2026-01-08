@@ -1,8 +1,8 @@
 "use client"
-import React from 'react'
+import React, { useState } from 'react' // 👈 useState import kiya
 import Image from 'next/image'
 import Link from 'next/link'
-import { Sparkles, ShoppingBag, Eye, Flame, Plus } from 'lucide-react'
+import { Sparkles, ShoppingBag, Eye, Flame, Plus, Check } from 'lucide-react' // 👈 Check icon import kiya
 import AddToWishlistButton from './AddToWishlistButton' 
 import { useCart } from '@/context/CartContext'
 import { Product } from '@/src/types' 
@@ -13,6 +13,7 @@ interface ProductProps {
 
 function ProductCard({ item }: ProductProps) {
   const { addToCart } = useCart();
+  const [isAdded, setIsAdded] = useState(false); // 👈 Track karne ke liye ki item add hua ya nahi
   
   const isSale = item.originalPrice && item.originalPrice > item.price;
   const isOutOfStock = item.stockQuantity === 0;
@@ -26,8 +27,16 @@ function ProductCard({ item }: ProductProps) {
     e.stopPropagation(); 
     
     if (isOutOfStock) return;
+    
     addToCart(item, 1);
-    alert(`${item.title} added to cart!`);
+    
+    // ✅ Button change logic
+    setIsAdded(true);
+    
+    // 2 second baad button wapas normal ho jayega
+    setTimeout(() => {
+        setIsAdded(false);
+    }, 2000);
   };
 
   return (
@@ -83,34 +92,42 @@ function ProductCard({ item }: ProductProps) {
                 </div>
             )}
 
-            {/* --- MOBILE ADD TO CART --- */}
+            {/* --- MOBILE ADD TO CART (UPDATED) --- */}
             {!isOutOfStock && (
                 <button 
                     onClick={handleAddToCart}
-                    // 👇 Added suppressHydrationWarning
                     suppressHydrationWarning
-                    className="md:hidden absolute bottom-2 right-2 flex items-center justify-center w-9 h-9 bg-white text-black rounded-full shadow-lg active:scale-90 transition-transform z-20"
+                    // Agar added hai to green color, nahi to white
+                    className={`md:hidden absolute bottom-2 right-2 flex items-center justify-center w-9 h-9 rounded-full shadow-lg active:scale-90 transition-all z-20
+                        ${isAdded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}
                 >
-                    <Plus size={18} strokeWidth={2.5} />
+                    {/* Agar added hai to Check (Tick), nahi to Plus */}
+                    {isAdded ? <Check size={18} strokeWidth={2.5} /> : <Plus size={18} strokeWidth={2.5} />}
                 </button>
             )}
 
-            {/* --- DESKTOP HOVER OVERLAY --- */}
+            {/* --- DESKTOP HOVER OVERLAY (UPDATED) --- */}
             <div className="hidden md:flex absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 items-end justify-center p-4 z-10 pointer-events-none">
                  <div className="flex gap-2 w-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300 pointer-events-auto">
                     
                     <button 
                         onClick={handleAddToCart}
                         disabled={isOutOfStock}
-                        // 👇 Added suppressHydrationWarning
                         suppressHydrationWarning
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded shadow-lg text-xs font-bold transition-colors
                             ${isOutOfStock 
                                 ? 'bg-stone-300 text-stone-500 cursor-not-allowed' 
-                                : 'bg-white text-stone-900 hover:bg-stone-50'
+                                : isAdded 
+                                    ? 'bg-green-600 text-white hover:bg-green-700' // 👈 Added state style
+                                    : 'bg-white text-stone-900 hover:bg-stone-50'
                             }`}
                     >
-                        {isOutOfStock ? 'OUT OF STOCK' : 'ADD TO CART'}
+                        {isOutOfStock 
+                            ? 'OUT OF STOCK' 
+                            : isAdded 
+                                ? <><Check size={16} /> ADDED</> // 👈 Added Text & Icon
+                                : 'ADD TO CART'
+                        }
                     </button>
 
                     <Link 
