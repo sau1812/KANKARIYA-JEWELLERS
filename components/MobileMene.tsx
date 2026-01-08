@@ -13,7 +13,6 @@ function MobileMenu() {
   const [openItem, setOpenItem] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(""); 
   
-  // 1. Naya State: Menu khula hai ya band, ye hum track karenge
   const [isSheetOpen, setIsSheetOpen] = useState(false); 
 
   const router = useRouter();
@@ -26,18 +25,12 @@ function MobileMenu() {
     e.preventDefault(); 
     
     if (searchQuery.trim()) {
-      // 2. Search hone par Sheet (Menu) ko forcefully band kar do
       setIsSheetOpen(false); 
-
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-      
-      // Optional: Input clear karna ho to
-      // setSearchQuery(""); 
     }
   };
 
   return (
-    // 3. 'open' aur 'onOpenChange' add kiya taaki hum control kar sakein
     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
       
       <SheetTrigger asChild>
@@ -49,7 +42,12 @@ function MobileMenu() {
         </button>
       </SheetTrigger>
 
-      <SheetContent side="left" className="w-[300px] bg-[#fffcf8] border-r border-stone-100 p-0 flex flex-col z-[60]">
+      {/* 👇 Change yahan kiya hai: onOpenAutoFocus lagaya hai */}
+      <SheetContent 
+        side="left" 
+        className="w-[300px] bg-[#fffcf8] border-r border-stone-100 p-0 flex flex-col z-[60]"
+        onOpenAutoFocus={(e) => e.preventDefault()} 
+      >
         <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
         
         {/* Header */}
@@ -73,7 +71,6 @@ function MobileMenu() {
                     placeholder="Search jewelry..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    // 4. 'autoFocus' nahi lagaya hai, isliye keyboard tabhi ayega jab user click karega.
                     className="bg-transparent outline-none text-sm text-stone-700 w-full placeholder:text-stone-400"
                 />
             </form>

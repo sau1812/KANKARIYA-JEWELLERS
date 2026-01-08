@@ -43,7 +43,7 @@ function Footer() {
                     <div>
                         <h3 className="font-serif text-base font-medium text-stone-900 mb-4">Help</h3>
                         <ul className="flex flex-col gap-2.5">
-                            <li><Link href="/track" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Track Order</Link></li>
+                           
                             <li><Link href="/shipping" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Shipping & Returns</Link></li>
                             <li><Link href="/faq" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">FAQs</Link></li>
                             <li><Link href="/care" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Jewelry Care</Link></li>
@@ -57,15 +57,15 @@ function Footer() {
                         <ul className="flex flex-col gap-3">
                             <li className="flex gap-2 items-start">
                                 <MapPin size={14} className="text-rose-500 mt-0.5 shrink-0" />
-                                <span className="text-xs text-stone-500">Mumbai, India</span>
+                                <span className="text-xs text-stone-500">Nashik, Maharashtra, India</span>
                             </li>
                             <li className="flex gap-2 items-center">
                                 <Phone size={14} className="text-rose-500 shrink-0" />
-                                <a href="tel:+919876543210" className="text-xs text-stone-500 hover:text-rose-500">+91 98765 43210</a>
+                                <a href="tel:+919370885808" className="text-xs text-stone-500 hover:text-rose-500">+91 9370885808</a>
                             </li>
                             <li className="flex gap-2 items-center">
                                 <Mail size={14} className="text-rose-500 shrink-0" />
-                                <a href="mailto:support@addys.com" className="text-xs text-stone-500 hover:text-rose-500">support@addys.com</a>
+                                <a href="mailto:vsstudio883216@gmail.com" className="text-xs text-stone-500 hover:text-rose-500">vsstudio883216@gmail.com</a>
                             </li>
                         </ul>
                     </div>
@@ -75,8 +75,8 @@ function Footer() {
                      <div className="hidden md:block">
                         <h3 className="font-serif text-base font-medium text-stone-900 mb-4">Legal</h3>
                         <ul className="flex flex-col gap-2.5">
-                            <li><Link href="/privacy" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Privacy Policy</Link></li>
-                            <li><Link href="/terms" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Terms of Service</Link></li>
+                            <li><Link href="#" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Privacy Policy</Link></li>
+                            <li><Link href="#" className="text-xs text-stone-500 hover:text-rose-500 transition-colors">Terms of Service</Link></li>
                         </ul>
                     </div>
 
@@ -90,8 +90,8 @@ function Footer() {
                 </p>
                 {/* Mobile Legal Links (Visible only on mobile bottom bar) */}
                 <div className="flex md:hidden gap-4">
-                     <Link href="/privacy" className="text-[10px] text-stone-400 hover:text-rose-500">Privacy</Link>
-                     <Link href="/terms" className="text-[10px] text-stone-400 hover:text-rose-500">Terms</Link>
+                     <Link href="#" className="text-[10px] text-stone-400 hover:text-rose-500">Privacy</Link>
+                     <Link href="#" className="text-[10px] text-stone-400 hover:text-rose-500">Terms</Link>
                 </div>
             </div>
 

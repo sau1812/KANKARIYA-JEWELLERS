@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Trash2, ArrowRight, Tag, ShoppingBag, Loader2 } from 'lucide-react'
+// 👇 Minus aur Plus icons import kiye
+import { Trash2, ArrowRight, Tag, ShoppingBag, Loader2, Minus, Plus } from 'lucide-react'
 import { useCart } from '@/context/CartContext' 
 import { client } from '@/sanity/lib/client'
 import imageUrlBuilder from '@sanity/image-url'
-import ShippingAddress from '@/components/ShippingAddress' // Component import
-import { Address } from '@/src/types' // Type import
+import ShippingAddress from '@/components/ShippingAddress' 
+import { Address } from '@/src/types' 
 import { useUser } from "@clerk/nextjs";
 
 const builder = imageUrlBuilder(client)
@@ -23,7 +24,8 @@ function urlFor(source: any) {
 }
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, getCartTotal, clearCart } = useCart();
+  // 👇 updateQuantity ko yahan destructure kiya
+  const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
   const router = useRouter();
   const { user } = useUser();
 
@@ -40,7 +42,6 @@ export default function CartPage() {
     setIsClient(true);
   }, []);
 
-  // Display Only Calculations
   const subTotal = getCartTotal();
   const shipping = subTotal > 1000 ? 0 : 100; 
   const total = Math.max(0, subTotal + shipping - discount);
@@ -54,7 +55,6 @@ export default function CartPage() {
         const coupon = await client.fetch(query, { code: couponCode.toUpperCase() });
         
         if (coupon) {
-            // Check expiry logic here if you added validUntil field
             const discountVal = Math.round(subTotal * (coupon.discountPercentage / 100));
             setDiscount(discountVal);
             setCouponMessage({ type: "success", text: `Coupon Applied! Saved ₹${discountVal}` });
@@ -80,13 +80,12 @@ export default function CartPage() {
     try {
         const userId = user?.id || "guest_user"; 
         
-        // 👇 SECURITY FIX: Don't send 'totalAmount'. Let backend calculate it.
         const response = await fetch("/api/create-order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                cartItems: cartItems.map(item => ({ _id: item._id, quantity: item.quantity })), // Send only ID & Qty
-                couponCode: discount > 0 ? couponCode : null, // Send code, not amount
+                cartItems: cartItems.map(item => ({ _id: item._id, quantity: item.quantity })), 
+                couponCode: discount > 0 ? couponCode : null, 
                 shippingAddress: selectedAddress,
                 userId: userId, 
             }),
@@ -132,16 +131,50 @@ export default function CartPage() {
           {/* Cart Items List */}
           <div className="flex-1 flex flex-col gap-4">
             {cartItems.map((item) => (
-                <div key={item._id} className="bg-white p-4 rounded-xl border border-stone-200 flex gap-4 items-center">
-                  <div className="relative w-20 h-20 bg-stone-100 rounded-lg overflow-hidden flex-shrink-0">
+                <div key={item._id} className="bg-white p-4 rounded-xl border border-stone-200 flex gap-4 items-center relative">
+                  
+                  {/* Image */}
+                  <div className="relative w-20 h-20 md:w-24 md:h-24 bg-stone-100 rounded-lg overflow-hidden flex-shrink-0">
                     {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-stone-900">{item.title}</h3>
-                    <p className="text-sm text-stone-500">Qty: {item.quantity}</p>
-                    <p className="font-bold">₹{item.price.toLocaleString()}</p>
+
+                  {/* Details */}
+                  <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 className="font-medium text-stone-900 line-clamp-1">{item.title}</h3>
+                        <p className="font-bold text-stone-900 mt-1">₹{item.price.toLocaleString()}</p>
+                    </div>
+
+                    {/* 👇 QUANTITY CONTROLS */}
+                    <div className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-1 w-fit border border-stone-200">
+                        <button 
+                            onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                            className="p-1 hover:text-rose-600 disabled:opacity-30 transition-colors"
+                        >
+                            <Minus size={16} />
+                        </button>
+                        
+                        <span className="font-semibold text-sm w-4 text-center">{item.quantity}</span>
+                        
+                        <button 
+                            onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                            // Aap chahein to yahan stock limit check bhi laga sakte hain
+                            // disabled={item.quantity >= item.stockQuantity}
+                            className="p-1 hover:text-green-600 transition-colors"
+                        >
+                            <Plus size={16} />
+                        </button>
+                    </div>
                   </div>
-                  <button onClick={() => removeFromCart(item._id)} className="text-stone-400 hover:text-red-500"><Trash2 size={18}/></button>
+
+                  {/* Remove Button */}
+                  <button 
+                    onClick={() => removeFromCart(item._id)} 
+                    className="absolute top-4 right-4 md:static text-stone-400 hover:text-red-500 transition-colors p-2"
+                  >
+                    <Trash2 size={18}/>
+                  </button>
                 </div>
             ))}
           </div>
