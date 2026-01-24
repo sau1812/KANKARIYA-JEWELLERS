@@ -3,44 +3,54 @@ import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
 import { Filter } from 'lucide-react'
 
-// 1. Product Type Definition
+// 1. Product Type Definition (Updated for Dynamic Price)
 interface Product {
   _id: string;
   title: string;
-  price: number;
   originalPrice: number;
   slug: string;
   imageUrl: string;
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
+  // 👇 Ye do fields zaroori hain calculation ke liye
+  weight: number;
+  makingCharges: number;
 }
 
-// 2. Data Fetching Function
+// 2. Fetch Live Silver Rate
+async function getSilverRate() {
+  const query = `*[_type == "silverRate"][0].ratePerGram`;
+  const rate = await client.fetch(query, {}, { next: { revalidate: 60 } });
+  return rate || 0;
+}
+
+// 3. Data Fetching Function
 async function getMensBracelets() {
-  // 👇 LOGIC UPDATE:
-  // Hume wo products chahiye jo 'bracelet' hain,
-  // AUR jinka gender ya to 'men' hai YA 'unisex' hai.
-  
+  // 👇 LOGIC UPDATE: Price hataya, Weight aur Making Charges add kiya
   const query = `*[_type == "product" && category == "bracelet" && (gender == "men" || gender == "unisex")]{
     _id,
     title,
-    price,
     originalPrice,
     "slug": slug.current,
     "imageUrl": image[0].asset->url,
     category,
     isHotDeal,
-    stockQuantity
+    stockQuantity,
+    weight,
+    makingCharges
   }`
 
-  // Revalidate har 60 seconds me
   const data = await client.fetch(query, {}, { next: { revalidate: 60 } })
   return data
 }
 
 export default async function ManBracelet() {
-  const products: Product[] = await getMensBracelets()
+  // Parallel Fetching: Products aur Silver Rate dono ek sath layenge
+  const productsData = getMensBracelets();
+  const silverRateData = getSilverRate();
+
+  const [products, silverRate] = await Promise.all([productsData, silverRateData]);
 
   return (
     <div className="bg-stone-50 min-h-screen py-12">
@@ -66,8 +76,9 @@ export default async function ManBracelet() {
         {/* --- Product Grid --- */}
         {products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {products.map((product) => (
-              <ProductCard key={product._id} item={product} />
+            {products.map((product: Product) => (
+              // 👇 silverRate pass karna zaroori hai price dikhane ke liye
+              <ProductCard key={product._id} item={product} silverRate={silverRate} />
             ))}
           </div>
         ) : (

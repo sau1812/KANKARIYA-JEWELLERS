@@ -1,33 +1,44 @@
 import React from 'react'
-import { client } from '@/sanity/lib/client' // 👈 Make sure path sahi ho
+import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
 import { Flame } from 'lucide-react'
 
-// 1. Data Types Define kiye
+// 1. Data Types Define kiye (Updated for Dynamic Price)
 interface Product {
   _id: string;
   title: string;
-  price: number;
   originalPrice: number;
   slug: string;
   imageUrl: string;
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
+  // 👇 Fields needed for calculation
+  weight: number;
+  makingCharges: number;
 }
 
-// 2. Data Fetching Function (Server Side)
+// 2. Fetch Live Silver Rate
+async function getSilverRate() {
+  const query = `*[_type == "silverRate"][0].ratePerGram`;
+  const rate = await client.fetch(query, {}, { next: { revalidate: 60 } });
+  return rate || 0;
+}
+
+// 3. Data Fetching Function (Server Side)
 async function getHotDeals() {
+  // 👇 LOGIC UPDATE: Fetch weight & makingCharges
   const query = `*[_type == "product" && isHotDeal == true]{
     _id,
     title,
-    price,
     originalPrice,
     "slug": slug.current,
     "imageUrl": image[0].asset->url,
     category,
     isHotDeal,
-    stockQuantity
+    stockQuantity,
+    weight,
+    makingCharges
   }`
 
   // Revalidate: 60 seconds (Har 1 min me naya data check karega)
@@ -36,7 +47,11 @@ async function getHotDeals() {
 }
 
 export default async function HotDealPage() {
-  const products: Product[] = await getHotDeals()
+  // Parallel Fetching: Get Products & Silver Rate together
+  const productsData = getHotDeals();
+  const silverRateData = getSilverRate();
+
+  const [products, silverRate] = await Promise.all([productsData, silverRateData]);
 
   return (
     <div className="bg-white min-h-screen py-12">
@@ -58,8 +73,9 @@ export default async function HotDealPage() {
         {/* --- Product Grid --- */}
         {products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-            {products.map((product) => (
-              <ProductCard key={product._id} item={product} />
+            {products.map((product: Product) => (
+              // 👇 Passing silverRate for dynamic calculation
+              <ProductCard key={product._id} item={product} silverRate={silverRate} />
             ))}
           </div>
         ) : (
