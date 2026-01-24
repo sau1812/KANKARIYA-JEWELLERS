@@ -2,16 +2,18 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useUser } from "@clerk/nextjs"; 
-import { Product } from "@/src/types"; // 👈 Global Type Import kiya
+import { Product } from "@/src/types"; 
 
-// 👇 CartItem ab Global Product se inherit karega + quantity add karega
-export interface CartItem extends Product {
+// 👇 FIX: CartItem mein 'price' ko Required banana padega
+// Hum 'Omit' use kar rahe hain taaki Product ka optional price hata sakein aur required price laga sakein
+export interface CartItem extends Omit<Product, 'price'> {
   quantity: number;
+  price: number; // ✅ Cart me price hamesha hona chahiye (Calculated wala)
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product, quantity: number) => void; // Input type fix kiya
+  addToCart: (product: Product, quantity: number) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   getCartTotal: () => number;
@@ -22,18 +24,14 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  
-  // User ID Logic (Clerk)
   const { user, isSignedIn } = useUser();
   
-  // Unique key per user (taaki user A ka cart user B ko na dikhe)
+  // Unique Storage Key
   const userKey = isSignedIn && user ? `cart_${user.id}` : "cart_guest";
 
   // 1. Load Cart
   useEffect(() => {
-    // Client-side check ensure karne ke liye
     if (typeof window === "undefined") return;
-
     const savedCart = localStorage.getItem(userKey);
     if (savedCart) {
       try {
@@ -53,7 +51,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem(userKey, JSON.stringify(cartItems));
   }, [cartItems, userKey]);
 
+  // 👇 ADD TO CART UPDATE
   const addToCart = (product: Product, quantity: number) => {
+    // Safety Check: Agar price undefined hai (DB se), toh add mat karo
+    // Lekin ProductCard se hum calculated price bhej rahe hain, so it should work.
+    const priceToStore = product.price || 0; 
+
     setCartItems((prevCart) => {
       const existingItem = prevCart.find((item) => item._id === product._id);
       
@@ -64,8 +67,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             : item
         );
       }
-      // Product properties spread karke quantity add ki
-      return [...prevCart, { ...product, quantity }];
+
+      // Naya item add karte waqt ensure karein ki 'price' number hai
+      const newItem: CartItem = {
+          ...product,
+          quantity,
+          price: priceToStore // ✅ Type safe assignment
+      };
+
+      return [...prevCart, newItem];
     });
   };
 
@@ -82,7 +92,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const clearCart = () => {

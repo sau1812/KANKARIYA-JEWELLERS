@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { ClerkProvider } from '@clerk/nextjs';
 import { CartProvider } from "@/context/CartContext"; 
-import { WishlistProvider } from "@/context/WishlistContext"; // 👈 Import
+import { WishlistProvider } from "@/context/WishlistContext"; 
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -13,9 +13,10 @@ const poppins = Poppins({
   variable: "--font-poppins",
 });
 
+// 👇 Updated Metadata
 export const metadata: Metadata = {
-  title: "vs Studio",
-  description: "Premium Jewelry Store",
+  title: "Kankariya Jewellers",
+  description: "Premium Silver Jewelry Store",
 };
 
 export default function RootLayout({
@@ -26,17 +27,13 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
-        <body className={`${poppins.className} antialiased text-stone-700 bg-[#fffcf8]`}>
+        <body className={`${poppins.className} antialiased text-stone-700 bg-[#fffcf8] overflow-x-hidden`}>
           
-          {/* 1. Cart Provider Wrap */}
           <CartProvider>
-            
-            {/* 2. Wishlist Provider Wrap (Cart ke andar) */}
             <WishlistProvider>
             
-              <div className="flex flex-col min-h-screen">
+              <div className="flex flex-col min-h-screen w-full">
                 
-                {/* Header ke paas ab dono ka access hai (Cart & Wishlist) */}
                 <Header/>
                 
                 <main className="flex-1 pt-10 md:pt-3">
@@ -47,9 +44,8 @@ export default function RootLayout({
                 
               </div>
 
-            </WishlistProvider> {/* 👈 Wishlist Provider Close kiya */}
-            
-          </CartProvider> {/* 👈 Cart Provider Close kiya */}
+            </WishlistProvider> 
+          </CartProvider>
 
         </body>
       </html>

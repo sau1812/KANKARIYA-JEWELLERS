@@ -1,20 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: true,
-    
+    unoptimized: true, // Ye development me images fast load karega (bina optimize kiye)
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "cdn.sanity.io", // Sanity Images
+        hostname: "cdn.sanity.io",
       },
       {
         protocol: "https",
-        hostname: "images.unsplash.com", // Banner Images
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "plus.unsplash.com", // ✅ Ye zaroori hai Unsplash ke liye
       },
     ],
   },
-  // TypeScript errors ignore karne ke liye (Ye abhi bhi valid hai)
   typescript: {
     ignoreBuildErrors: true,
   },

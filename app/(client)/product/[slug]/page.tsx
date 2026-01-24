@@ -3,34 +3,35 @@ import { client } from '@/sanity/lib/client'
 import ProductDetails from '@/components/ProductDetails'
 import { notFound } from 'next/navigation'
 
-// 👇 Fetch Function (Ye sahi tha, bas slug pass hone ka wait kar raha tha)
+// 👇 Fetch Function Update
 async function getProduct(slug: string) {
+  // ✅ QUERY UPDATE: weight aur makingCharges add kiya
   const query = `*[_type == "product" && slug.current == $slug][0]{
     _id,
     title,
-    price,
+    // price hata sakte hain ya rakh sakte hain, but calculation weight se hogi
     originalPrice,
     description,
     stockQuantity,
     image,
     category,
-    "slug": slug.current
+    "slug": slug.current,
+    
+    // 👇 Ye 2 fields zaroori hain Dynamic Pricing ke liye
+    weight,
+    makingCharges
   }`
 
   const product = await client.fetch(query, { slug })
   return product
 }
 
-// 👇 TYPE CHANGE: params ab Promise hai
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
 export default async function SingleProductPage({ params }: PageProps) {
-  // 👇 FIX: Pehle params ko Await karein
   const { slug } = await params;
-
-  // Ab slug use karein
   const product = await getProduct(slug)
 
   if (!product) {
@@ -45,6 +46,7 @@ export default async function SingleProductPage({ params }: PageProps) {
   return (
     <div className="bg-white min-h-screen py-8 md:py-16">
        <div className="container mx-auto px-4 max-w-6xl">
+          {/* Ab product ke andar weight hai, toh ProductDetails sahi price calculate karega */}
           <ProductDetails product={product} />
        </div>
     </div>

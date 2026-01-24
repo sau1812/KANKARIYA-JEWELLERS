@@ -7,7 +7,7 @@ const Logo1 = ({ className }: { className?: string }) => {
   return (
     <Link href={"/"} className="flex-shrink-0">
             <Image
-              src="/images/logo2-removebg-preview.png"
+              src="/images/r_logo.png"
               alt="V's Studio"
               width={140} // Next.js ko bataya ki image choti load kare
               height={70}

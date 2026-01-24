@@ -1,42 +1,85 @@
 import { NextResponse } from "next/server";
 import { client } from "@/sanity/lib/client";
 
+// 👇 Helper: Server-Side Calculation Logic (Must match your frontend logic)
+const calculateItemPrice = (weight: number, rate: number, makingCharges: number) => {
+  const silverValue = weight * rate;
+  const makingCost = silverValue * (makingCharges / 100);
+  const subTotal = silverValue + makingCost;
+  const gstAmount = subTotal * 0.03;
+  return Math.round(subTotal + gstAmount);
+};
+
 export async function POST(req: Request) {
   try {
-    // 👇 UPDATED: Now extracting 'email' from the request body
     const { cartItems, shippingAddress, userId, couponCode, email } = await req.json();
 
     if (!cartItems || cartItems.length === 0) {
       return NextResponse.json({ message: "Cart is empty" }, { status: 400 });
     }
 
-    // --- STEP 1: Server-Side Price Calculation ---
+    // --- STEP 1: Fetch Live Silver Rate (The Source of Truth) ---
+    const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
+    const currentSilverRate = await client.fetch(rateQuery);
+
+    if (!currentSilverRate) {
+       return NextResponse.json({ message: "Server Error: Silver Rate not found" }, { status: 500 });
+    }
+
+    // --- STEP 2: Fetch Products with Weight & Making Charges ---
     const productIds = cartItems.map((item: any) => item._id);
     
-    // Fetch fresh data from Sanity
+    // We fetch 'weight', 'makingCharges', and 'stockQuantity' to calculate fresh price
     const products = await client.fetch(
-      `*[_type == "product" && _id in $ids]{_id, price, title}`,
+      `*[_type == "product" && _id in $ids]{
+          _id, 
+          title, 
+          weight, 
+          makingCharges, 
+          stockQuantity,
+          price // Fallback for fixed items if needed
+      }`,
       { ids: productIds }
     );
 
     let calculatedTotal = 0;
+    const finalOrderItems = [];
     
-    const orderItems = cartItems.map((cartItem: any) => {
+    // --- STEP 3: Secure Calculation Loop ---
+    for (const cartItem of cartItems) {
         const product = products.find((p: any) => p._id === cartItem._id);
-        if (!product) throw new Error(`Product ${cartItem._id} not found`);
         
-        calculatedTotal += product.price * cartItem.quantity;
+        if (!product) {
+            return NextResponse.json({ message: `Product ${cartItem._id} not found` }, { status: 400 });
+        }
 
-        return {
+        // 🛑 Security Check: Stock Availability
+        if (product.stockQuantity < cartItem.quantity) {
+            return NextResponse.json({ message: `Out of Stock: ${product.title}` }, { status: 400 });
+        }
+
+        // 💰 Calculate Price on Server (Hacker cannot bypass this)
+        // If product has weight, use Formula. If not, use fixed price (fallback).
+        let unitPrice = 0;
+        if (product.weight && product.weight > 0) {
+            unitPrice = calculateItemPrice(product.weight, currentSilverRate, product.makingCharges);
+        } else {
+            unitPrice = product.price || 0;
+        }
+
+        const lineTotal = unitPrice * cartItem.quantity;
+        calculatedTotal += lineTotal;
+
+        finalOrderItems.push({
             _key: product._id,
             product: { _type: 'reference', _ref: product._id },
             quantity: cartItem.quantity,
-            priceAtPurchase: product.price,
+            priceAtPurchase: unitPrice, // Saving the calculated price
             productName: product.title
-        };
-    });
+        });
+    }
 
-    // --- STEP 2: Shipping & Coupon ---
+    // --- STEP 4: Shipping & Coupon Logic ---
     const shippingCost = calculatedTotal > 1000 ? 0 : 100;
     let discountAmount = 0;
 
@@ -52,16 +95,13 @@ export async function POST(req: Request) {
 
     const finalAmount = calculatedTotal + shippingCost - discountAmount;
 
-    // --- STEP 3: Create Order in Sanity ---
+    // --- STEP 5: Create Order in Sanity ---
     const newOrder = await client.create({
         _type: "order",
         orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         orderDate: new Date().toISOString(),
         customerName: shippingAddress.name,
-        
-        // 👇 UPDATED: Using the real email passed from Frontend
         email: email, 
-        
         phone: shippingAddress.phone,
         
         shippingAddress: {
@@ -73,7 +113,7 @@ export async function POST(req: Request) {
             phone: shippingAddress.phone,
         },
 
-        products: orderItems,
+        products: finalOrderItems, // Using our securely calculated items
         
         totalPrice: finalAmount,
         amountDiscount: discountAmount,
@@ -82,8 +122,9 @@ export async function POST(req: Request) {
         status: "pending",
         clerkUserId: userId,
         
+        // Payment Info (You can update this later based on Payment Gateway response)
         stripeCustomerId: "manual_order", 
-        stripePaymentIntentId: "manual_payment",
+        stripePaymentIntentId: "cod_pending", 
     });
 
     return NextResponse.json({ 

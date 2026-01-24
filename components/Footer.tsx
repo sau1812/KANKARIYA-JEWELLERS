@@ -50,28 +50,42 @@ function Footer() {
                         </ul>
                     </div>
 
-                    {/* Col B: Contact (Compact) */}
-                    {/* On mobile, this sits next to 'Help' saving vertical space */}
+                    {/* Col B: Contact (Updated Info) */}
                     <div>
                         <h3 className="font-serif text-base font-medium text-stone-900 mb-4">Contact</h3>
                         <ul className="flex flex-col gap-3">
+                            {/* Address */}
                             <li className="flex gap-2 items-start">
                                 <MapPin size={14} className="text-rose-500 mt-0.5 shrink-0" />
-                                <span className="text-xs text-stone-500">Nashik, Maharashtra, India</span>
+                                <span className="text-xs text-stone-500 leading-relaxed">
+                                    Shop 4-8, Vraj Bhumi Apt, Opp Central Park, Untwadi Road, Nashik - 422008
+                                </span>
                             </li>
-                            <li className="flex gap-2 items-center">
-                                <Phone size={14} className="text-rose-500 shrink-0" />
-                                <a href="tel:+919370885808" className="text-xs text-stone-500 hover:text-rose-500">+91 9370885808</a>
+
+                            {/* Phones */}
+                            <li className="flex gap-2 items-start">
+                                <Phone size={14} className="text-rose-500 mt-0.5 shrink-0" />
+                                <div className="flex flex-col gap-1">
+                                    <a href="tel:02532379212" className="text-xs text-stone-500 hover:text-rose-500">
+                                        0253-2379212
+                                    </a>
+                                    <span className="text-xs text-stone-500">
+                                        +91 9673610006 | +91 9209833606
+                                    </span>
+                                </div>
                             </li>
+
+                            {/* Email */}
                             <li className="flex gap-2 items-center">
                                 <Mail size={14} className="text-rose-500 shrink-0" />
-                                <a href="mailto:vsstudio883216@gmail.com" className="text-xs text-stone-500 hover:text-rose-500">vsstudio883216@gmail.com</a>
+                                <a href="mailto:kankariya29777@gmail.com" className="text-xs text-stone-500 hover:text-rose-500 break-all">
+                                    kankariya29777@gmail.com
+                                </a>
                             </li>
                         </ul>
                     </div>
 
                      {/* Col C: Legal (Desktop only separate col, Mobile hidden/merged) */}
-                     {/* For extreme compactness on mobile, we can hide this column or merge it below */}
                      <div className="hidden md:block">
                         <h3 className="font-serif text-base font-medium text-stone-900 mb-4">Legal</h3>
                         <ul className="flex flex-col gap-2.5">
@@ -86,7 +100,7 @@ function Footer() {
             {/* --- BOTTOM BAR (Compact) --- */}
             <div className="border-t border-stone-200/60 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
                 <p className="text-[10px] md:text-xs text-stone-400">
-                    © {new Date().getFullYear()} Vs studio.
+                    © {new Date().getFullYear()} Kankariya Jewellers. All rights reserved.
                 </p>
                 {/* Mobile Legal Links (Visible only on mobile bottom bar) */}
                 <div className="flex md:hidden gap-4">

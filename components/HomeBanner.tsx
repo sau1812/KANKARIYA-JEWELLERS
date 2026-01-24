@@ -1,42 +1,44 @@
 import React from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import Container from './Container'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Star } from 'lucide-react'
 import { client } from '@/sanity/lib/client'
 
 // --- 1. DEFAULT DATA ---
 const fallbackData = {
-  headingTop: "Discover",
-  headingHighlight: "Essence",
-  headingBottom: "of Pure Luxury",
-  description: "Experience craftsmanship like never before.",
-  offerText: "FLAT 10% OFF on your first order",
-  image1Url: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=2070&auto=format&fit=crop",
-  image2Url: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2070&auto=format&fit=crop"
+  headingTop: "Timeless",
+  headingHighlight: "Elegance",
+  headingBottom: "Redefined",
+  description: "Crafted with precision, worn with pride. Discover the purity of silver like never before.",
+  offerText: "Get Flat 10% OFF on First Order",
+  image1Url: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=2070&auto=format&fit=crop", 
 }
 
 // --- 2. FETCH FUNCTION ---
 async function getHeroData() {
-  const query = `*[_type == "hero"][0]{
-    headingTop,
-    headingHighlight,
-    headingBottom,
-    description,
-    offerText,
-    "image1": image1.asset->url,
-    "image2": image2.asset->url
-  }`;
-  
-  const data = await client.fetch(query, {}, { next: { revalidate: 60 } });
-  return data;
+  try {
+    const query = `*[_type == "hero"][0]{
+        headingTop,
+        headingHighlight,
+        headingBottom,
+        description,
+        offerText,
+        "image1": image1.asset->url,
+        "image2": image2.asset->url
+    }`;
+    const data = await client.fetch(query, {}, { next: { revalidate: 60 } });
+    return data;
+  } catch (error) {
+    console.log("Sanity Fetch Error:", error);
+    return null;
+  }
 }
 
 const features = [
-  "ANTI-TARNISH", "WATER PROOF", "SKIN-FRIENDLY", "HYPOALLERGENIC", "PREMIUM FINISH",
+  "PURE SILVER (925)", "LIFETIME SHINE", "NICKEL FREE", "CERTIFIED QUALITY", "HANDCRAFTED"
 ];
 
-// --- 3. ASYNC COMPONENT ---
+// --- 3. SERVER COMPONENT (Async hai, isliye 'use client' nahi lagana) ---
 async function HomeBanner() {
   const sanityData = await getHeroData();
   
@@ -47,125 +49,120 @@ async function HomeBanner() {
     desc: sanityData?.description || fallbackData.description,
     offer: sanityData?.offerText || fallbackData.offerText,
     img1: sanityData?.image1 || fallbackData.image1Url,
-    img2: sanityData?.image2 || fallbackData.image2Url,
   };
 
   return (
-    // FIX 1: Removed 'overflow-hidden' from mobile (added md:overflow-hidden) 
-    // to allow content to grow if text is too long on small screens.
-    <div className="relative w-full bg-[#fff0f0] md:overflow-hidden flex flex-col justify-between">
+    <section className="relative w-full bg-[#FAFAFA] overflow-hidden">
       
-      <style>{`
-        @keyframes floatUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-float {
-          opacity: 0;
-          animation: floatUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-        @keyframes scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-100%); }
-        }
-        .animate-scroll {
-          animation: scroll 25s linear infinite;
-        }
-      `}</style>
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-[#C5A25D] opacity-[0.03] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-[#D61C22] opacity-[0.03] rounded-full blur-3xl translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
 
-      {/* FIX 2: Changed min-h to ensure it fits content on mobile */}
-      <Container className="relative z-10 min-h-[500px] md:min-h-[600px] flex items-center flex-grow py-12 md:py-0 gap-8 md:gap-16">
-        
-        {/* --- LEFT SIDE: Text Content --- */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center z-20 text-center md:text-left items-center md:items-start">
-            
-            <span className="inline-block px-3 py-1 mb-4 text-[10px] md:text-xs font-bold tracking-widest text-white uppercase bg-rose-500 rounded-full w-fit animate-float" style={{ animationDelay: '0.1s' }}>
-              New Collection
-            </span>
+      <Container className="relative z-10 pt-10 pb-16 md:py-20">
+        <div className="flex flex-col-reverse md:flex-row items-center gap-10 md:gap-20">
+          
+          {/* --- LEFT SIDE: Content --- */}
+          <div className="w-full md:w-1/2 text-center md:text-left flex flex-col items-center md:items-start space-y-6 md:space-y-8">
+             
+             {/* New Collection Badge */}
+             <div className="flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E5E5] rounded-full shadow-sm">
+                <Star size={12} className="text-[#C5A25D] fill-[#C5A25D]" />
+                <span className="text-[10px] md:text-xs font-bold tracking-widest text-stone-500 uppercase">
+                  New 2026 Collection
+                </span>
+             </div>
 
-            {/* FIX 3: Reduced text size on mobile (text-3xl instead of text-4xl) */}
-            <h1 className="text-3xl md:text-6xl lg:text-7xl font-serif text-stone-900 leading-[1.1] mb-6 animate-float" style={{ animationDelay: '0.2s' }}>
-              {content.top} <br className="hidden md:block" />
-              <span className="italic font-light text-rose-500">{content.highlight}</span><br/>
-              {content.bottom}
-            </h1>
+             {/* Heading */}
+             <h1 className="text-4xl md:text-7xl font-serif text-[#1A1A1A] leading-[1.1]">
+                {content.top} <br />
+                <span className="italic text-[#D61C22] font-medium relative">
+                  {content.highlight}
+                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-[#C5A25D] opacity-60" viewBox="0 0 100 10" preserveAspectRatio="none">
+                    <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2" fill="none" />
+                  </svg>
+                </span> <br />
+                {content.bottom}
+             </h1>
 
-            <p className="text-sm md:text-lg text-stone-600 mb-8 max-w-md leading-relaxed animate-float" style={{ animationDelay: '0.3s' }}>
-              {content.desc} <br/>
-              <span className="font-bold text-black border-b-2 border-rose-400">
-                {content.offer}
-              </span>
-            </p>
+             <p className="text-stone-600 text-sm md:text-lg max-w-lg leading-relaxed">
+                {content.desc}
+             </p>
 
-            <div className="flex gap-4 animate-float" style={{ animationDelay: '0.4s' }}>
-              <Link 
-                href="/deal" 
-                className="group flex items-center gap-2 bg-rose-500 text-white px-6 py-2.5 md:px-8 md:py-3 rounded-full font-medium hover:bg-rose-600 transition-all duration-300 shadow-lg"
-              >
-                Shop Now
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link 
-                href="/deal" 
-                className="flex items-center gap-2 bg-white border border-rose-200 text-rose-900 px-6 py-2.5 md:px-8 md:py-3 rounded-full font-medium hover:bg-rose-50 transition-all duration-300 shadow-sm"
-              >
-                Lookbook
-              </Link>
-            </div>
-        </div>
+             <div className="bg-[#FFF5F5] border-l-4 border-[#D61C22] px-4 py-3 w-full md:w-auto text-left rounded-r-md">
+                <p className="text-sm text-[#D61C22] font-semibold tracking-wide uppercase">Limited Offer</p>
+                <p className="text-stone-900 font-bold">{content.offer}</p>
+             </div>
 
-        {/* --- RIGHT SIDE: Dynamic Images --- */}
-        <div className="hidden md:flex w-1/2 relative h-[500px] items-center justify-center">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] bg-rose-300/20 rounded-full blur-3xl"></div>
-            <div className="relative w-[350px] h-[400px]">
-                {/* Image 1 (Back) */}
-                <div className="absolute top-0 right-10 w-52 aspect-[3/4] bg-white p-2 shadow-lg -rotate-6 z-10 animate-float" style={{ animationDelay: '0.5s' }}>
-                    <div className="relative w-full h-full overflow-hidden">
-                        <Image 
-                           src={content.img1} 
-                           alt="Jewelry Back" 
-                           fill 
-                           className="object-cover hover:scale-105 transition-transform duration-700" 
-                        />
-                    </div>
+             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto pt-2">
+                <Link href="/silver" className="bg-[#D61C22] text-white px-8 py-4 md:rounded-tl-2xl md:rounded-br-2xl font-medium tracking-wide hover:bg-[#B0171C] transition-all duration-300 shadow-xl shadow-red-200 flex items-center justify-center gap-2 group">
+                  Explore Collection
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link href="/about" className="px-8 py-4 border border-[#1A1A1A] text-[#1A1A1A] md:rounded-tl-2xl md:rounded-br-2xl font-medium tracking-wide hover:bg-[#1A1A1A] hover:text-white transition-all duration-300 flex items-center justify-center">
+                  Our Story
+                </Link>
+             </div>
+          </div>
+
+          {/* --- RIGHT SIDE: Image --- */}
+          <div className="w-full md:w-1/2 relative flex justify-center md:justify-end">
+             
+             <div className="relative w-[320px] h-[400px] md:w-[450px] md:h-[600px]">
+                
+                {/* Border Frame */}
+                <div className="absolute top-4 -right-4 w-full h-full border-2 border-[#C5A25D] rounded-t-[150px] z-0 hidden md:block"></div>
+
+                {/* Main Image Box */}
+                <div className="relative w-full h-full rounded-t-[150px] overflow-hidden shadow-2xl z-10 bg-stone-200">
+                   
+                   {/* Standard img tag */}
+                   <img 
+                      src={content.img1} 
+                      alt="Luxury Silver Jewelry" 
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000 ease-out" 
+                   />
+                   
+                   <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/60 to-transparent"></div>
+                   
+                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-lg">
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A]">Kankariya Exclusive</p>
+                   </div>
                 </div>
-                {/* Image 2 (Front) */}
-                <div className="absolute top-12 left-0 w-56 aspect-[3/4] bg-white p-2 shadow-2xl rotate-3 z-20 animate-float" style={{ animationDelay: '0.7s' }}>
-                    <div className="relative w-full h-full overflow-hidden">
-                        <Image 
-                           src={content.img2} 
-                           alt="Jewelry Front" 
-                           fill 
-                           className="object-cover hover:scale-105 transition-transform duration-700" 
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
 
+                <div className="absolute -bottom-6 -left-6 md:top-20 md:-left-12 w-24 h-24 bg-[#1A1A1A] text-white rounded-full flex flex-col items-center justify-center shadow-xl z-20 border-4 border-white">
+                    <span className="text-xs font-light text-stone-300">Starting</span>
+                    <span className="text-lg font-bold">₹999</span>
+                </div>
+
+             </div>
+          </div>
+
+        </div>
       </Container>
 
-      {/* --- MARQUEE --- */}
-      {/* FIX 4: Increased padding (py-4) so text isn't cut off */}
-      <div className="w-full bg-[#fae8e8] border-t border-rose-200 py-4 relative z-20">
-         <div className="flex w-full whitespace-nowrap overflow-hidden">
-            <div className="flex animate-scroll min-w-full shrink-0 justify-around gap-10 md:gap-16 px-4 md:px-8">
-              {features.map((text, i) => (
-                <span key={i} className="text-xs md:text-sm font-semibold tracking-[0.15em] text-stone-800 uppercase flex items-center gap-2">
-                  {text}
-                </span>
-              ))}
-            </div>
-            <div className="flex animate-scroll min-w-full shrink-0 justify-around gap-10 md:gap-16 px-4 md:px-8" aria-hidden="true">
-              {features.map((text, i) => (
-                <span key={i} className="text-xs md:text-sm font-semibold tracking-[0.15em] text-stone-800 uppercase flex items-center gap-2">
-                  {text}
-                </span>
-              ))}
-            </div>
-         </div>
+      {/* --- Marquee --- */}
+      <div className="w-full bg-[#1A1A1A] py-3 overflow-hidden border-t-4 border-[#C5A25D]">
+        <div className="flex w-full whitespace-nowrap">
+           <div className="flex animate-scroll min-w-full shrink-0 justify-around gap-16 px-8">
+             {features.map((text, i) => (
+               <span key={i} className="text-xs md:text-sm font-bold tracking-[0.2em] text-[#C5A25D] uppercase flex items-center gap-3">
+                 <span className="w-1.5 h-1.5 rounded-full bg-white/50"></span>
+                 {text}
+               </span>
+             ))}
+           </div>
+           <div className="flex animate-scroll min-w-full shrink-0 justify-around gap-16 px-8" aria-hidden="true">
+             {features.map((text, i) => (
+               <span key={i} className="text-xs md:text-sm font-bold tracking-[0.2em] text-[#C5A25D] uppercase flex items-center gap-3">
+                 <span className="w-1.5 h-1.5 rounded-full bg-white/50"></span>
+                 {text}
+               </span>
+             ))}
+           </div>
+        </div>
       </div>
-    </div>
+      
+    </section>
   )
 }
 

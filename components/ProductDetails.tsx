@@ -5,86 +5,82 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { 
   Minus, Plus, ShoppingBag, Truck, ShieldCheck, Zap, 
-  Star, ArrowRight 
+  Star, Info, ChevronDown, MapPin 
 } from 'lucide-react'
 import { client } from '@/sanity/lib/client'
 import { useCart } from '@/context/CartContext'
 import ProductCard from './ProductCard'
 import imageUrlBuilder from '@sanity/image-url'
-import { Product } from '@/src/types' // 👈 Global Type import kiya
+import { Product } from '@/src/types' 
+import { calculateSilverPrice } from '@/utils/calculatePrice' 
 
 const builder = imageUrlBuilder(client)
+function urlFor(source: any) { return builder.image(source) }
 
-function urlFor(source: any) {
-  return builder.image(source)
-}
-
-// Props Interface (Global Product se thoda zyada data chahiye yahan)
 interface ProductDetailsProps {
   product: {
     _id: string;
     title: string;
-    price: number;
-    originalPrice?: number;
     description: string;
     stockQuantity: number;
-    image: any[]; // Raw Sanity Image Array for Gallery
+    image: any[]; 
     category: string;
     slug: string;
+    weight: number;
+    makingCharges: number;
+    originalPrice?: number;
   }
 }
 
 export default function ProductDetails({ product }: ProductDetailsProps) {
+  // --- STATE ---
   const [quantity, setQuantity] = useState(1);
   
-  // Image Setup: Pehli image ko default select kiya
+  // FIX 1: Initial load should also be high quality
   const [selectedImage, setSelectedImage] = useState<string | null>(
-    product.image && product.image[0] 
-      ? urlFor(product.image[0]).width(1000).url() 
-      : null
+    product.image && product.image[0] ? urlFor(product.image[0]).width(1200).url() : null
   );
 
   const [realTimeStock, setRealTimeStock] = useState(product.stockQuantity);
+  const [silverRate, setSilverRate] = useState(0);
   const [isCheckingStock, setIsCheckingStock] = useState(true);
-  
-  // Related Products ko Global 'Product' type diya
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [showPriceBreakup, setShowPriceBreakup] = useState(false);
+  const [openAccordion, setOpenAccordion] = useState<string | null>('desc');
 
   const { addToCart } = useCart();
   const router = useRouter();
 
-  // Price Calculation
-  const totalPrice = product.price * quantity;
-  // Use optional chaining just in case originalPrice is missing
-  const originalPrice = product.originalPrice || 0;
+  // --- ⚡ PRICE CALCULATION LOGIC ---
+  const { finalPrice, breakup } = calculateSilverPrice(product.weight, silverRate, product.makingCharges);
+  
+  // TOTAL PRICE CALCULATION
+  const totalPrice = finalPrice * quantity;
+  
   const isOutOfStock = realTimeStock === 0;
 
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Fetch Fresh Stock
+        const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
+        const fetchedRate = await client.fetch(rateQuery);
+        setSilverRate(fetchedRate || 0);
+
         const stockQuery = `*[_type == "product" && _id == $id][0].stockQuantity`;
         const freshStock = await client.fetch(stockQuery, { id: product._id });
         setRealTimeStock(freshStock);
 
-        // 2. Fetch Related Products
         const relatedQuery = `*[_type == "product" && category == $category && _id != $id][0...4] {
-          _id,
-          title,
-          price,
-          originalPrice,
+          _id, title, originalPrice, category, stockQuantity, isHotDeal,
           "slug": slug.current,
-          "imageUrl": image[0].asset->url, 
-          category,
-          stockQuantity,
-          isHotDeal
+          "imageUrl": image[0].asset->url,
+          weight, makingCharges
         }`;
         
         const relatedData = await client.fetch(relatedQuery, { 
-            category: product.category, 
-            id: product._id 
+            category: product.category, id: product._id 
         });
-        
         setRelatedProducts(relatedData);
 
       } catch (error) {
@@ -93,202 +89,247 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         setIsCheckingStock(false);
       }
     };
-    
     fetchData();
   }, [product._id, product.category]);
 
-  const handleIncrement = () => {
-    if (quantity < realTimeStock) setQuantity(prev => prev + 1);
-  };
-
-  const handleDecrement = () => {
-    if (quantity > 1) setQuantity(prev => prev - 1);
-  };
-
-  // Convert current detail to CartItem format
-  const cartItemData = {
-      ...product,
-      imageUrl: selectedImage || "", // Ensure string
-      originalPrice: originalPrice,
-      isHotDeal: false // Default
-  };
-
+  // --- HANDLERS ---
   const handleAddToCart = () => {
-    if (quantity > realTimeStock) { alert("Stock update: Please refresh page."); return; }
-    addToCart(cartItemData, quantity); // 👈 Fixed: Passing clean data
-    alert(`${quantity} item(s) added to cart!`);
+    if (quantity > realTimeStock) return;
+    const cartItem = { 
+        ...product, 
+        price: finalPrice, 
+        imageUrl: selectedImage || "", 
+        slug: { current: product.slug },
+        weight: product.weight,
+        makingCharges: product.makingCharges
+    };
+    // @ts-ignore
+    addToCart(cartItem, quantity);
   };
 
   const handleBuyNow = () => {
-    if (quantity > realTimeStock) { alert("Stock update: Please refresh page."); return; }
-    addToCart(cartItemData, quantity);
+    handleAddToCart();
     router.push('/cart'); 
   };
 
+  // --- QUANTITY HANDLERS ---
+  const increaseQty = () => {
+    if (quantity < realTimeStock) setQuantity(prev => prev + 1);
+  };
+  
+  const decreaseQty = () => {
+    if (quantity > 1) setQuantity(prev => prev - 1);
+  };
+
+  if (!silverRate && isCheckingStock) return <div className="min-h-[400px] flex items-center justify-center text-stone-500">Updating Live Prices...</div>;
+
   return (
     <div className="flex flex-col gap-16 animate-in fade-in duration-500">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12">
         
         {/* LEFT: IMAGE GALLERY */}
-        <div className="flex flex-col gap-4">
-          <div className="relative aspect-square bg-stone-100 rounded-2xl overflow-hidden border border-stone-200 shadow-sm">
+        <div className="lg:col-span-7 flex flex-col gap-4">
+          <div className="relative aspect-[1/1] bg-stone-50 rounded-lg overflow-hidden border border-stone-100">
              {selectedImage ? (
                <Image 
                  src={selectedImage} 
                  alt={product.title} 
                  fill 
-                 className={`object-cover transition-all duration-500 hover:scale-105 cursor-zoom-in ${isOutOfStock ? "grayscale opacity-50" : ""}`}
+                 className={`object-cover transition-all duration-700 hover:scale-110 cursor-crosshair ${isOutOfStock ? "grayscale opacity-50" : ""}`}
                  priority
+                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                />
              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-100">
-                    <ShoppingBag size={40} className="mb-2 opacity-20"/>
-                    <span className="text-sm font-medium">No Image Uploaded</span>
+                <div className="w-full h-full flex flex-col items-center justify-center text-stone-300">
+                    <ShoppingBag size={48} />
                 </div>
              )}
-
-             {isOutOfStock && (
-               <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm">
-                  <span className="text-white font-bold text-xl uppercase tracking-widest border-2 border-white px-6 py-2">Sold Out</span>
-               </div>
-             )}
+             <div className="absolute top-4 left-4 flex flex-col gap-2">
+                 {product.makingCharges === 0 && <span className="bg-rose-600 text-white text-xs font-bold px-3 py-1 uppercase tracking-wide">No Making Charges</span>}
+                 {isOutOfStock && <span className="bg-stone-900 text-white text-xs font-bold px-3 py-1 uppercase tracking-wide">Sold Out</span>}
+             </div>
           </div>
           
-          {/* Thumbnails */}
+          {/* 👇 FIX 2: Thumbnails logic updated for High Res */}
           {product.image && product.image.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {product.image.map((img: any, idx: number) => {
-                 const imgUrl = urlFor(img).width(200).url(); 
-                 return (
+                  // 1. URL for thumbnail (Small size for speed)
+                  const thumbnailSrc = urlFor(img).width(200).url();
+                  // 2. URL for Main View (Big size for quality)
+                  const highResSrc = urlFor(img).width(1200).url();
+
+                  return (
                   <button 
                     key={idx} 
-                    onClick={() => setSelectedImage(imgUrl)}
-                    // 👇 Added suppressHydrationWarning
-                    suppressHydrationWarning
-                    className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 
-                      ${selectedImage === imgUrl ? 'border-rose-500 ring-2 ring-rose-100' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                    // Set High Res URL on click
+                    onClick={() => setSelectedImage(highResSrc)}
+                    className={`relative w-20 h-20 rounded-md overflow-hidden border transition-all flex-shrink-0 ${selectedImage === highResSrc ? 'border-rose-600 ring-1 ring-rose-600' : 'border-stone-200 hover:border-stone-400'}`}
                   >
-                    <Image src={imgUrl} alt="thumb" fill className="object-cover" />
+                    <Image src={thumbnailSrc} alt="thumb" fill className="object-cover" />
                   </button>
-                 )
+                  )
               })}
             </div>
           )}
         </div>
 
         {/* RIGHT: PRODUCT INFO */}
-        <div className="flex flex-col gap-6">
+        <div className="lg:col-span-5 flex flex-col gap-6">
+           
+           {/* Header */}
            <div>
-              <div className="flex justify-between items-start">
-                <span className="text-rose-600 text-sm font-bold uppercase tracking-wider bg-rose-50 px-2 py-1 rounded-md">{product.category}</span>
-                <div className="flex items-center gap-1 text-yellow-500 text-sm font-medium">
-                    <Star fill="currentColor" size={16} /> 4.8 (120 Reviews)
-                </div>
+              <div className="flex items-center gap-2 mb-2">
+                  <span className="text-rose-600 text-xs font-bold uppercase tracking-wider">{product.category}</span>
+                  <div className="flex items-center gap-1 text-yellow-500 text-xs font-medium">
+                      <Star fill="currentColor" size={12} /> 4.8 (120)
+                  </div>
               </div>
-              <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mt-3 leading-tight">{product.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-serif text-stone-900 leading-tight">{product.title}</h1>
            </div>
 
-           <div className="border-b border-stone-200 pb-6">
-              <div className="flex items-end gap-3">
-                 <span className="text-4xl font-bold text-stone-900">₹{product.price.toLocaleString()}</span>
-                 {originalPrice > product.price && (
-                    <div className="flex flex-col mb-1">
-                        <span className="text-stone-400 line-through text-sm">₹{originalPrice.toLocaleString()}</span>
-                        <span className="text-green-600 text-xs font-bold">
-                            {Math.round(((originalPrice - product.price) / originalPrice) * 100)}% OFF
+           {/* 💰 UNIT PRICE SECTION */}
+           <div className="bg-stone-50 p-5 rounded-xl border border-stone-200 relative">
+              <div className="flex items-end gap-3 mb-1">
+                 <span className="text-4xl font-serif text-stone-900">₹{finalPrice.toLocaleString()}</span>
+                 <button 
+                   onClick={() => setShowPriceBreakup(!showPriceBreakup)}
+                   className="text-stone-400 hover:text-rose-600 transition-colors mb-2"
+                 >
+                    <Info size={20} />
+                 </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-stone-500">
+                <span className="bg-white px-2 py-1 border border-stone-200 rounded text-stone-700 font-medium">Weight: {product.weight}g</span>
+                <span>•</span>
+                <span>Silver Rate: ₹{silverRate}/g</span>
+              </div>
+
+              {/* Price Breakup Popup */}
+              {showPriceBreakup && (
+                  <div className="absolute top-full left-0 mt-2 w-full bg-white shadow-xl rounded-lg border border-stone-100 p-4 z-20 animate-in fade-in slide-in-from-top-2">
+                      <h4 className="font-serif text-stone-800 mb-3 text-sm">Price Breakdown</h4>
+                      <div className="space-y-2 text-sm">
+                          <div className="flex justify-between text-stone-600">
+                              <span>Silver Value ({product.weight}g × {silverRate})</span>
+                              <span>₹{breakup?.silverValue?.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-600">
+                              <span>Making Charges ({product.makingCharges}%)</span>
+                              <span>+ ₹{breakup?.makingCost?.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-600 pb-2 border-b border-dashed border-stone-200">
+                              <span>GST (3%)</span>
+                              <span>+ ₹{breakup?.gst?.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between font-bold text-stone-900 pt-1">
+                              <span>Final Price</span>
+                              <span>₹{finalPrice.toLocaleString()}</span>
+                          </div>
+                      </div>
+                  </div>
+              )}
+           </div>
+
+           {/* Stock Warning */}
+           {!isCheckingStock && !isOutOfStock && realTimeStock < 5 && (
+              <div className="bg-orange-50 border border-orange-100 p-3 rounded-lg flex items-center gap-3">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                  <p className="text-xs text-orange-800 font-medium">Hurry! Only {realTimeStock} left.</p>
+              </div>
+           )}
+
+           {/* DYNAMIC TOTAL PRICE AREA */}
+           <div className="flex flex-col gap-4 mt-2">
+              <div className="flex flex-col md:flex-row gap-4">
+                  
+                  {/* Quantity Selector */}
+                  <div className="flex items-center border border-stone-300 rounded-lg h-12 w-fit">
+                     <button onClick={decreaseQty} className="px-4 hover:text-rose-600 disabled:opacity-30" disabled={quantity<=1}><Minus size={16}/></button>
+                     <span className="w-8 text-center font-bold text-lg">{quantity}</span>
+                     <button onClick={increaseQty} className="px-4 hover:text-rose-600 disabled:opacity-30" disabled={quantity>=realTimeStock}><Plus size={16}/></button>
+                  </div>
+
+                  {/* Total Amount Display */}
+                  <div className="flex-1 flex flex-col items-end justify-center bg-stone-100 px-4 rounded-lg h-12">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-stone-400 font-medium hidden sm:block">
+                            ({quantity} × ₹{finalPrice.toLocaleString()}) =
                         </span>
-                    </div>
-                 )}
+                        <span className="text-xl font-bold text-stone-900">
+                            Total: ₹{totalPrice.toLocaleString()}
+                        </span>
+                      </div>
+                  </div>
               </div>
               
-              <div className="mt-4">
-                 {!isCheckingStock && !isOutOfStock && realTimeStock < 10 && (
-                    <div className="space-y-1">
-                        <div className="flex justify-between text-xs font-medium">
-                            <span className="text-orange-600">Hurry! Only {realTimeStock} left</span>
-                            <span className="text-stone-400">Low Stock</span>
-                        </div>
-                        <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-orange-500 h-full rounded-full animate-pulse" style={{ width: `${(realTimeStock / 10) * 100}%` }}></div>
-                        </div>
-                    </div>
-                 )}
+              {/* Buttons */}
+              <div className="grid grid-cols-2 gap-4">
+                  <button 
+                     onClick={handleAddToCart}
+                     disabled={isOutOfStock}
+                     className="h-12 border border-stone-300 rounded-lg font-medium hover:bg-stone-50 transition-all flex items-center justify-center gap-2 text-stone-700"
+                  >
+                     <ShoppingBag size={18} /> Add to Cart
+                  </button>
+                  <button 
+                     onClick={handleBuyNow} 
+                     disabled={isOutOfStock}
+                     className="h-12 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-100"
+                  >
+                     <Zap size={18} fill="currentColor"/> Buy Now
+                  </button>
               </div>
            </div>
 
-           <p className="text-stone-600 leading-relaxed">{product.description}</p>
-
-           {/* ACTION AREA */}
-           <div className="flex flex-col gap-6 bg-stone-50 p-6 rounded-2xl border border-stone-200">
-              
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                 {/* Quantity Selector */}
-                 <div className="flex items-center gap-3">
-                    <span className="font-semibold text-stone-700 text-sm">Quantity</span>
-                    <div className="flex items-center bg-white border border-stone-300 rounded-lg px-1 shadow-sm">
-                       {/* 👇 Added suppressHydrationWarning to buttons */}
-                       <button onClick={handleDecrement} disabled={isOutOfStock || quantity <= 1} suppressHydrationWarning className="p-2 hover:text-rose-600 disabled:opacity-30"><Minus size={16} /></button>
-                       <span className="font-bold w-8 text-center text-stone-900">{quantity}</span>
-                       <button onClick={handleIncrement} disabled={isCheckingStock || isOutOfStock || quantity >= realTimeStock} suppressHydrationWarning className="p-2 hover:text-rose-600 disabled:opacity-30"><Plus size={16} /></button>
-                    </div>
-                 </div>
-
-                 {/* Total Price Display */}
-                 <div className="text-right">
-                    <span className="text-xs text-stone-500 block">Total Price:</span>
-                    <span className="text-2xl font-bold text-stone-900">₹{totalPrice.toLocaleString()}</span>
-                 </div>
-              </div>
-
-              <div className="flex gap-3">
-                 <button 
-                    onClick={handleAddToCart} 
-                    disabled={isOutOfStock || isCheckingStock}
-                    suppressHydrationWarning
-                    className="flex-1 bg-white text-stone-900 border border-stone-300 py-3.5 rounded-xl font-bold hover:bg-stone-100 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                 >
-                    <ShoppingBag size={18} /> Add to Cart
-                 </button>
-                 
-                 <button 
-                    onClick={handleBuyNow} 
-                    disabled={isOutOfStock || isCheckingStock}
-                    suppressHydrationWarning
-                    className="flex-1 bg-rose-600 text-white py-3.5 rounded-xl font-bold hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg hover:shadow-rose-200"
-                 >
-                    <Zap size={18} fill="currentColor" /> Buy Now
-                 </button>
-              </div>
+           {/* Accordion */}
+           <div className="mt-4 border-t border-stone-200">
+               <div className="border-b border-stone-200">
+                   <button onClick={() => setOpenAccordion(openAccordion === 'desc' ? null : 'desc')} className="w-full py-4 flex justify-between items-center text-left">
+                       <span className="font-serif text-stone-800">Product Description</span>
+                       <ChevronDown size={16} className={`transition-transform ${openAccordion === 'desc' ? 'rotate-180' : ''}`} />
+                   </button>
+                   {openAccordion === 'desc' && (
+                       <div className="pb-4 text-stone-600 text-sm leading-relaxed">{product.description}</div>
+                   )}
+               </div>
+               <div className="border-b border-stone-200">
+                   <button onClick={() => setOpenAccordion(openAccordion === 'ship' ? null : 'ship')} className="w-full py-4 flex justify-between items-center text-left">
+                       <span className="font-serif text-stone-800">Shipping & Returns</span>
+                       <ChevronDown size={16} className={`transition-transform ${openAccordion === 'ship' ? 'rotate-180' : ''}`} />
+                   </button>
+                   {openAccordion === 'ship' && (
+                       <div className="pb-4 text-stone-600 text-sm leading-relaxed">
+                           <div className="flex items-center gap-2 mb-2"><Truck size={16}/> Free shipping above ₹2000</div>
+                           <div className="flex items-center gap-2"><ShieldCheck size={16}/> 7-day easy return policy.</div>
+                       </div>
+                   )}
+               </div>
            </div>
-
-           <div className="grid grid-cols-2 gap-4 text-stone-600 text-sm">
-              <div className="flex items-center gap-3"><Truck size={18} className="text-rose-500"/> <span>Free Delivery</span></div>
-              <div className="flex items-center gap-3"><ShieldCheck size={18} className="text-rose-500"/> <span>1 Year Warranty</span></div>
+           
+           <div className="flex items-center gap-2 mt-2">
+               <MapPin size={18} className="text-stone-400" />
+               <input type="text" placeholder="Enter Pincode" className="text-sm border-b border-stone-300 focus:border-rose-600 outline-none py-1 w-48 bg-transparent" />
+               <button className="text-xs font-bold text-rose-600 uppercase">Check</button>
            </div>
         </div>
       </div>
 
-      <div className="border-t border-stone-200 pt-10">
-          <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-serif font-bold text-stone-900">You Might Also Like</h2>
-              <a href="/shop" className="text-rose-600 text-sm font-semibold flex items-center gap-1 hover:underline">
-                  View All <ArrowRight size={16} />
-              </a>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      {/* RELATED PRODUCTS */}
+      <div className="border-t border-stone-200 pt-16">
+          <h2 className="text-3xl font-serif text-stone-900 mb-8">Complete the Look</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {relatedProducts.length > 0 ? (
                   relatedProducts.map((item) => (
-                      <ProductCard key={item._id} item={item} />
+                      <ProductCard key={item._id} item={item} silverRate={silverRate} />
                   ))
               ) : (
-                  <p className="col-span-4 text-center text-stone-400 py-10">
-                      Loading suggestions or no related items found...
-                  </p>
+                  <p className="col-span-4 text-center text-stone-400 py-10">Loading...</p>
               )}
           </div>
       </div>
-
     </div>
   )
 }

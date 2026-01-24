@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { name: "Orders", href: "/admin", icon: ShoppingCart },
-    { name: "Products (Edit Price)", href: "/admin/products", icon: Package },
+    { name: "Products (Edit)", href: "/admin/products", icon: Package },
   ];
 
   return (
@@ -37,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-64 bg-white border-r border-stone-200 hidden md:flex flex-col">
         <div className="p-6 border-b border-stone-100">
              <h1 className="font-serif text-xl font-bold text-stone-900">Admin Panel</h1>
-             <p className="text-xs text-stone-400">VS Studio Manager</p>
+             <p className="text-xs text-stone-400">KANKARIYA JEWELLERS</p>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
