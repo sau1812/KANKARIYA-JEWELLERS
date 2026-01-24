@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, ShoppingBag, Trash2, ArrowRight } from 'lucide-react'
+import { Heart, ShoppingBag, Trash2 } from 'lucide-react'
 import { useWishlist } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { client } from '@/sanity/lib/client'
@@ -22,36 +22,56 @@ function urlFor(source: any) {
 export default function WishlistPage() {
   const { wishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
+  
+  // 👇 State for Hydration and Silver Rate
   const [isClient, setIsClient] = useState(false);
+  const [silverRate, setSilverRate] = useState<number>(0);
 
+  // 👇 Fetch Silver Rate on Mount
   useEffect(() => {
     setIsClient(true);
+
+    const fetchRate = async () => {
+      try {
+        const query = `*[_type == "silverRate"][0].ratePerGram`;
+        const rate = await client.fetch(query);
+        setSilverRate(rate || 0);
+      } catch (error) {
+        console.error("Failed to fetch silver rate", error);
+      }
+    };
+
+    fetchRate();
   }, []);
 
+  // 👇 Helper to Calculate Price safely
+  const calculatePrice = (item: any) => {
+    if (item.weight && item.makingCharges && silverRate) {
+      return (item.weight * silverRate) + item.makingCharges;
+    }
+    // Fallback agar purana item ho jisme direct price ho
+    return item.price || 0;
+  };
+
   const handleMoveToCart = (product: any) => {
-    addToCart(product, 1);
+    // 👇 Cart me bhejte waqt current calculated price sath bhejein
+    const finalPrice = calculatePrice(product);
+    const productWithPrice = { ...product, price: finalPrice };
+    
+    addToCart(productWithPrice, 1);
     removeFromWishlist(product._id);
     alert("Moved to Cart!");
   };
 
-  // 👇 SPECIAL HELPER: Har tarah ki image ko handle karega
   const getImageUrl = (item: any) => {
-    // 1. Agar Product Card se aaya hai (imageUrl string hai)
     if (item.imageUrl) return item.imageUrl;
-
-    // 2. Agar image field khud string hai
     if (typeof item.image === "string") return item.image;
-
-    // 3. Agar Sanity Object Array hai
     if (item.image && Array.isArray(item.image) && item.image[0]) {
       return urlFor(item.image[0])?.width(400).url();
     }
-
-    // 4. Agar Single Sanity Object hai
     if (item.image && item.image.asset) {
       return urlFor(item.image)?.width(400).url();
     }
-
     return null;
   };
 
@@ -79,10 +99,11 @@ export default function WishlistPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            {wishlist.map((item) => {
-              // 👇 Get Correct Image URL
-              const finalImageUrl = getImageUrl(item);
+             const finalImageUrl = getImageUrl(item);
+             // 👇 Calculate Price for Display
+             const finalPrice = calculatePrice(item);
 
-              return (
+             return (
                  <div key={item._id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-100 group hover:shadow-md transition-all">
                     {/* Image Area */}
                     <div className="relative h-64 bg-stone-100 overflow-hidden">
@@ -114,10 +135,14 @@ export default function WishlistPage() {
                     <div className="p-5">
                        <Link href={`/product/${item.slug || '#'}`}>
                           <h3 className="font-serif text-lg text-stone-900 line-clamp-1 mb-1 hover:text-rose-600 transition-colors">
-                              {item.title}
+                             {item.title}
                           </h3>
                        </Link>
-                       <p className="text-rose-600 font-bold mb-4">₹{item.price.toLocaleString()}</p>
+                       
+                       {/* 👇 Display Calculated Price */}
+                       <p className="text-rose-600 font-bold mb-4">
+                         {silverRate > 0 ? `₹${finalPrice.toLocaleString()}` : "Loading Price..."}
+                       </p>
                        
                        <button 
                           onClick={() => handleMoveToCart(item)}

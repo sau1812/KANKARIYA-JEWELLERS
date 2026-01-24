@@ -4,13 +4,19 @@ import ProductCard from '@/components/ProductCard'
 import { Product } from '@/src/types'
 import { SearchX, Search } from 'lucide-react'
 
-// Update 1: Type ko Promise banaya
+// 1. Silver Rate Fetch Helper
+async function getSilverRate() {
+  const query = `*[_type == "silverRate"][0].ratePerGram`;
+  const rate = await client.fetch(query, {}, { next: { revalidate: 60 } });
+  return rate || 0;
+}
+
 interface SearchPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  // Update 2: Pehle await kiya, fir query nikali (Next.js 15 Rule)
+  // Update 2: Next.js 15 Rule (Await params)
   const resolvedSearchParams = await searchParams; 
   const query = resolvedSearchParams.q;
 
@@ -26,6 +32,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     )
   }
 
+  // 👇 QUERY UPDATE: 'price' hataya, 'weight' aur 'makingCharges' add kiya
   const sanityQuery = `*[_type == "product" && (
     title match $searchTerm + "*" || 
     category match $searchTerm + "*" || 
@@ -33,18 +40,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   )]{
     _id,
     title,
-    price,
     originalPrice,
     "slug": slug.current,
     "imageUrl": image[0].asset->url,
     category,
     isHotDeal,
-    stockQuantity
+    stockQuantity,
+    weight,
+    makingCharges
   }`
 
-  const products: Product[] = await client.fetch(sanityQuery, { 
-    searchTerm: query 
-  })
+  // 👇 PARALLEL FETCHING: Products aur Silver Rate ek sath layenge
+  const productsPromise = client.fetch(sanityQuery, { searchTerm: query });
+  const silverRatePromise = getSilverRate();
+
+  const [products, silverRate] = await Promise.all([productsPromise, silverRatePromise]);
 
   return (
     <div className="bg-white min-h-screen py-12">
@@ -61,8 +71,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         {products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <ProductCard key={product._id} item={product} />
+            {products.map((product: Product) => (
+              // 👇 Pass silverRate to ProductCard for calculation
+              <ProductCard key={product._id} item={product} silverRate={silverRate} />
             ))}
           </div>
         ) : (
