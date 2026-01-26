@@ -5,14 +5,15 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Minus, Plus, ShoppingBag, Truck, ShieldCheck, Zap, 
-  Star, Info, ChevronDown, CheckCircle2, X, MapPin 
+  Minus, Plus, Star, Info, ChevronDown, CheckCircle2, X, ArrowRight
 } from 'lucide-react'
 import { client } from '@/sanity/lib/client'
 import { useCart } from '@/context/CartContext'
 import imageUrlBuilder from '@sanity/image-url'
 import { ExtraOption } from '@/src/types' 
 import { calculateSilverPrice } from '@/utils/calculatePrice' 
+import Link from 'next/link'
+import ProductCard from './ProductCard' // 👈 Aapka ProductCard component
 
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { return builder.image(source) }
@@ -28,6 +29,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   );
   const [realTimeStock, setRealTimeStock] = useState(product.stockQuantity);
   const [silverRate, setSilverRate] = useState(0);
+  const [suggestedProducts, setSuggestedProducts] = useState<any[]>([]); 
   const [isCheckingStock, setIsCheckingStock] = useState(true);
   const [showPriceBreakup, setShowPriceBreakup] = useState(false);
   const [selectedExtras, setSelectedExtras] = useState<ExtraOption[]>([]);
@@ -49,16 +51,22 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rate, stock] = await Promise.all([
+        const [rate, stock, suggested] = await Promise.all([
           client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
-          client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id })
+          client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id }),
+          // Fetching products from same category for suggestions
+          client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]`, { 
+            cat: product.category, 
+            id: product._id 
+          })
         ]);
         setSilverRate(rate || 0);
         setRealTimeStock(stock);
+        setSuggestedProducts(suggested);
       } catch (e) { console.error(e); } finally { setIsCheckingStock(false); }
     };
     fetchData();
-  }, [product._id]);
+  }, [product._id, product.category]);
 
   const toggleExtra = (option: ExtraOption) => {
     setSelectedExtras(prev => 
@@ -78,10 +86,9 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 md:py-12">
-      {/* Grid Layout: Desktop 12-col, Mobile 1-col */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
         
-        {/* LEFT: IMAGE GALLERY (Full width on mobile) */}
+        {/* LEFT: IMAGE GALLERY */}
         <div className="lg:col-span-7 space-y-4 md:space-y-6">
           <div className="relative aspect-square rounded-2xl md:rounded-3xl overflow-hidden bg-stone-50 border border-stone-100 shadow-sm">
             {selectedImage && (
@@ -109,7 +116,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           </div>
         </div>
 
-        {/* RIGHT: CONTENT (Scrollable on mobile) */}
+        {/* RIGHT: CONTENT */}
         <div className="lg:col-span-5 flex flex-col gap-6 md:gap-8">
           <header className="space-y-1 md:space-y-2">
             <div className="flex items-center gap-2 text-rose-600 font-bold text-[10px] uppercase tracking-widest">
@@ -124,7 +131,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             </div>
           </header>
 
-          {/* CUSTOMIZATION: SMALL NOTES SUPPORTED HERE */}
+          {/* CUSTOMIZATIONS */}
           {product.extraOptions && product.extraOptions.length > 0 && (
             <div className="space-y-4 pt-4 border-t border-stone-100">
               <h3 className="font-serif text-lg text-stone-800">Customize Your Piece</h3>
@@ -143,7 +150,6 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-stone-800">{opt.optionName}</span>
-                          {/* SMALL NOTE RENDER */}
                           {opt.description && <span className="text-[10px] text-stone-500 leading-tight">{opt.description}</span>}
                         </div>
                       </div>
@@ -155,7 +161,6 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             </div>
           )}
 
-          {/* ACTION AREA: OPTIMIZED FOR THUMB ACCESS ON MOBILE */}
           <div className="space-y-4 md:space-y-6 pt-4 border-t border-stone-100">
              <div className="flex items-center justify-between bg-stone-50 p-4 md:p-6 rounded-2xl md:rounded-3xl">
                 <div className="flex items-center gap-3 bg-white border border-stone-200 rounded-xl p-1">
@@ -179,7 +184,6 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
              </div>
           </div>
 
-          {/* ACCORDIONS */}
           <div className="space-y-1">
              {['desc', 'ship'].map((tab) => (
                <div key={tab} className="border-b border-stone-100">
@@ -200,7 +204,42 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         </div>
       </div>
 
-      {/* PRICE BREAKUP MODAL (Centered for both Mobile & Desktop) */}
+      {/* --- SUGGESTED PRODUCTS USING YOUR PRODUCTCARD --- */}
+      {suggestedProducts.length > 0 && (
+        <div className="mt-20 pt-10 border-t border-stone-100">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <p className="text-rose-600 font-bold text-[10px] uppercase tracking-[0.2em] mb-2">Recommendation</p>
+              <h2 className="text-3xl font-serif text-stone-900">You May Also Like</h2>
+            </div>
+            <Link href="/shop" className="text-stone-400 hover:text-rose-600 transition-colors flex items-center gap-2 text-sm font-medium">
+              View All <ArrowRight size={16}/>
+            </Link>
+          </div>
+
+          {/* Grid setup for your cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {suggestedProducts.map((item) => {
+              // Map Sanity image to your Card's expected 'imageUrl' format
+              const cardItem = {
+                ...item,
+                slug: item.slug.current,
+                imageUrl: item.image?.[0] ? urlFor(item.image[0]).width(600).url() : null
+              };
+
+              return (
+                <ProductCard 
+                  key={item._id} 
+                  item={cardItem} 
+                  silverRate={silverRate} 
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* PRICE BREAKUP MODAL */}
       <AnimatePresence>
         {showPriceBreakup && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
