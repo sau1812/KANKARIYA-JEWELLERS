@@ -9,13 +9,12 @@ export default defineType({
   fields: [
     // --- 1. ORDER & CUSTOMER INFO ---
     defineField({
-      name: "orderNumber", // Changed from "ordernumber" to camelCase
+      name: "orderNumber",
       title: "Order Number",
       type: "string",
       validation: (Rule) => Rule.required(),
     }),
     
-    // Invoice Object
     defineField({
       name: "invoice",
       title: "Invoice Details",
@@ -27,7 +26,6 @@ export default defineType({
       ],
     }),
 
-    // Stripe & Clerk IDs (Backend Tracking)
     defineField({
       name: "stripeCheckoutSessionId",
       title: "Stripe Checkout Session ID",
@@ -46,9 +44,8 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
 
-    // Customer Details
     defineField({
-      name: 'customerName', // Renamed from "Name" to be specific
+      name: 'customerName',
       title: 'Customer Name',
       type: 'string',
       validation: (Rule) => Rule.required(),
@@ -92,7 +89,7 @@ export default defineType({
       initialValue: 0,
     }),
 
-    // --- 3. PRODUCTS BOUGHT ---
+    // --- 3. PRODUCTS BOUGHT (Nested Extras Added Here) ---
     defineField({
       name: "products",
       title: "Products",
@@ -114,19 +111,39 @@ export default defineType({
               type: "number",
               initialValue: 1,
             }),
+            defineField({
+              name: "priceAtPurchase",
+              title: "Price per unit (at purchase)",
+              type: "number",
+            }),
+            // ✨ MOVED: Selected Extras ab har product ke andar hai
+            defineField({
+              name: "selectedExtras",
+              title: "Selected Extras (Customizations)",
+              type: "array",
+              of: [
+                {
+                  type: "object",
+                  fields: [
+                    { name: "optionName", title: "Option Name", type: "string" },
+                    { name: "price", title: "Price", type: "number" },
+                    { name: "description", title: "Small Note / Description", type: "string" }, // "Small Note" yahan dikhega
+                  ]
+                }
+              ]
+            }),
           ],
           preview: {
             select: {
-              productTitle: "product.title", // Ensure this matches your Product schema title field
+              productTitle: "product.title",
               quantity: "quantity",
               image: "product.image",
-              price: "product.price",
+              price: "priceAtPurchase",
             },
             prepare(select) {
               return {
-                // FIXED: Used backticks (`) instead of single quotes (')
-                title: `${select.productTitle} (x${select.quantity})`,
-                subtitle: `Price: ₹${select.price}`,
+                title: `${select.productTitle || 'Unknown'} (x${select.quantity})`,
+                subtitle: `Unit Price: ₹${select.price || 0}`,
                 media: select.image && select.image[0],
               };
             },
@@ -137,7 +154,7 @@ export default defineType({
 
     // --- 4. SHIPPING ADDRESS ---
     defineField({
-      name: "shippingAddress", // Renamed from "address" to avoid confusion
+      name: "shippingAddress",
       title: "Shipping Address",
       type: "object",
       fields: [
@@ -171,12 +188,11 @@ export default defineType({
       name: "orderDate",
       title: "Order Date",
       type: "datetime",
-      initialValue: () => new Date().toISOString(), // FIXED: Made it a function
+      initialValue: () => new Date().toISOString(),
       validation: (Rule) => Rule.required(),
     }),
   ],
 
-  // --- MAIN PREVIEW (Dashboard List) ---
   preview: {
     select: {
       name: "customerName",
@@ -187,9 +203,7 @@ export default defineType({
     },
     prepare(select) {
       const orderIdSnippet = select.orderId ? `${select.orderId.slice(0, 5)}...${select.orderId.slice(-5)}` : 'No ID';
-      
       return {
-        // FIXED: Used backticks (`) for variable injection
         title: `${select.name} (${orderIdSnippet})`,
         subtitle: `₹${select.amount} ${select.currency} - ${select.email}`,
         media: BasketIcon,

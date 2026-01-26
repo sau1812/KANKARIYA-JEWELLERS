@@ -16,13 +16,18 @@ async function getProducts() {
     isHotDeal,
     stockQuantity,
     weight,
-    makingCharges
+    makingCharges,
+    // 👇 Ye add karna zaroori hai tabhi frontend pe dikhega
+    extraOptions[] {
+      optionName,
+      price,
+      description
+    }
   }`;
 
   const data = await client.fetch(query, {}, { next: { revalidate: 60 } });
   return data;
 }
-
 export default async function Home() {
   const products = await getProducts();
 

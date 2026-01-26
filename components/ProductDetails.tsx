@@ -1,335 +1,224 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Minus, Plus, ShoppingBag, Truck, ShieldCheck, Zap, 
-  Star, Info, ChevronDown, MapPin 
+  Star, Info, ChevronDown, CheckCircle2, X, MapPin 
 } from 'lucide-react'
 import { client } from '@/sanity/lib/client'
 import { useCart } from '@/context/CartContext'
-import ProductCard from './ProductCard'
 import imageUrlBuilder from '@sanity/image-url'
-import { Product } from '@/src/types' 
+import { ExtraOption } from '@/src/types' 
 import { calculateSilverPrice } from '@/utils/calculatePrice' 
 
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { return builder.image(source) }
 
 interface ProductDetailsProps {
-  product: {
-    _id: string;
-    title: string;
-    description: string;
-    stockQuantity: number;
-    image: any[]; 
-    category: string;
-    slug: string;
-    weight: number;
-    makingCharges: number;
-    originalPrice?: number;
-  }
+  product: any;
 }
 
 export default function ProductDetails({ product }: ProductDetailsProps) {
-  // --- STATE ---
   const [quantity, setQuantity] = useState(1);
-  
-  // FIX 1: Initial load should also be high quality
   const [selectedImage, setSelectedImage] = useState<string | null>(
-    product.image && product.image[0] ? urlFor(product.image[0]).width(1200).url() : null
+    product.image?.[0] ? urlFor(product.image[0]).width(1200).url() : null
   );
-
   const [realTimeStock, setRealTimeStock] = useState(product.stockQuantity);
   const [silverRate, setSilverRate] = useState(0);
   const [isCheckingStock, setIsCheckingStock] = useState(true);
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [showPriceBreakup, setShowPriceBreakup] = useState(false);
+  const [selectedExtras, setSelectedExtras] = useState<ExtraOption[]>([]);
   const [openAccordion, setOpenAccordion] = useState<string | null>('desc');
 
   const { addToCart } = useCart();
   const router = useRouter();
 
-  // --- ⚡ PRICE CALCULATION LOGIC ---
-  const { finalPrice, breakup } = calculateSilverPrice(product.weight, silverRate, product.makingCharges);
+  const { finalPrice, breakup } = useMemo(() => 
+    calculateSilverPrice(product.weight, silverRate, product.makingCharges),
+    [product.weight, silverRate, product.makingCharges]
+  );
   
-  // TOTAL PRICE CALCULATION
-  const totalPrice = finalPrice * quantity;
-  
+  const extrasTotal = selectedExtras.reduce((sum, item) => sum + item.price, 0);
+  const unitPriceTotal = finalPrice + extrasTotal;
+  const totalPrice = unitPriceTotal * quantity;
   const isOutOfStock = realTimeStock === 0;
 
-  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
-        const fetchedRate = await client.fetch(rateQuery);
-        setSilverRate(fetchedRate || 0);
-
-        const stockQuery = `*[_type == "product" && _id == $id][0].stockQuantity`;
-        const freshStock = await client.fetch(stockQuery, { id: product._id });
-        setRealTimeStock(freshStock);
-
-        const relatedQuery = `*[_type == "product" && category == $category && _id != $id][0...4] {
-          _id, title, originalPrice, category, stockQuantity, isHotDeal,
-          "slug": slug.current,
-          "imageUrl": image[0].asset->url,
-          weight, makingCharges
-        }`;
-        
-        const relatedData = await client.fetch(relatedQuery, { 
-            category: product.category, id: product._id 
-        });
-        setRelatedProducts(relatedData);
-
-      } catch (error) {
-        console.error("Data fetch failed", error);
-      } finally {
-        setIsCheckingStock(false);
-      }
+        const [rate, stock] = await Promise.all([
+          client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
+          client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id })
+        ]);
+        setSilverRate(rate || 0);
+        setRealTimeStock(stock);
+      } catch (e) { console.error(e); } finally { setIsCheckingStock(false); }
     };
     fetchData();
-  }, [product._id, product.category]);
+  }, [product._id]);
 
-  // --- HANDLERS ---
+  const toggleExtra = (option: ExtraOption) => {
+    setSelectedExtras(prev => 
+      prev.find(e => e.optionName === option.optionName)
+        ? prev.filter(e => e.optionName !== option.optionName)
+        : [...prev, option]
+    );
+  };
+
   const handleAddToCart = () => {
     if (quantity > realTimeStock) return;
-    const cartItem = { 
-        ...product, 
-        price: finalPrice, 
-        imageUrl: selectedImage || "", 
-        slug: { current: product.slug },
-        weight: product.weight,
-        makingCharges: product.makingCharges
-    };
     // @ts-ignore
-    addToCart(cartItem, quantity);
+    addToCart({ ...product, price: unitPriceTotal, selectedExtras, imageUrl: selectedImage || "" }, quantity);
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
-    router.push('/cart'); 
-  };
-
-  // --- QUANTITY HANDLERS ---
-  const increaseQty = () => {
-    if (quantity < realTimeStock) setQuantity(prev => prev + 1);
-  };
-  
-  const decreaseQty = () => {
-    if (quantity > 1) setQuantity(prev => prev - 1);
-  };
-
-  if (!silverRate && isCheckingStock) return <div className="min-h-[400px] flex items-center justify-center text-stone-500">Updating Live Prices...</div>;
+  if (isCheckingStock && !silverRate) return <div className="h-[60vh] flex items-center justify-center font-serif italic text-stone-400 animate-pulse">Loading Kankariya Jewellers...</div>;
 
   return (
-    <div className="flex flex-col gap-16 animate-in fade-in duration-500">
-      
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12">
+    <div className="max-w-7xl mx-auto px-4 py-4 md:py-12">
+      {/* Grid Layout: Desktop 12-col, Mobile 1-col */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
         
-        {/* LEFT: IMAGE GALLERY */}
-        <div className="lg:col-span-7 flex flex-col gap-4">
-          <div className="relative aspect-[1/1] bg-stone-50 rounded-lg overflow-hidden border border-stone-100">
-             {selectedImage ? (
-               <Image 
-                 src={selectedImage} 
-                 alt={product.title} 
-                 fill 
-                 className={`object-cover transition-all duration-700 hover:scale-110 cursor-crosshair ${isOutOfStock ? "grayscale opacity-50" : ""}`}
-                 priority
-                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-               />
-             ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-stone-300">
-                    <ShoppingBag size={48} />
-                </div>
-             )}
-             <div className="absolute top-4 left-4 flex flex-col gap-2">
-                 {product.makingCharges === 0 && <span className="bg-rose-600 text-white text-xs font-bold px-3 py-1 uppercase tracking-wide">No Making Charges</span>}
-                 {isOutOfStock && <span className="bg-stone-900 text-white text-xs font-bold px-3 py-1 uppercase tracking-wide">Sold Out</span>}
-             </div>
+        {/* LEFT: IMAGE GALLERY (Full width on mobile) */}
+        <div className="lg:col-span-7 space-y-4 md:space-y-6">
+          <div className="relative aspect-square rounded-2xl md:rounded-3xl overflow-hidden bg-stone-50 border border-stone-100 shadow-sm">
+            {selectedImage && (
+              <Image src={selectedImage} alt={product.title} fill className="object-cover" priority />
+            )}
+            <div className="absolute top-4 left-4 flex flex-col gap-2">
+              {product.isHotDeal && <span className="bg-rose-600 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Hot Deal 🔥</span>}
+              {isOutOfStock && <span className="bg-stone-900 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Sold Out</span>}
+            </div>
           </div>
-          
-          {/* 👇 FIX 2: Thumbnails logic updated for High Res */}
-          {product.image && product.image.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {product.image.map((img: any, idx: number) => {
-                  // 1. URL for thumbnail (Small size for speed)
-                  const thumbnailSrc = urlFor(img).width(200).url();
-                  // 2. URL for Main View (Big size for quality)
-                  const highResSrc = urlFor(img).width(1200).url();
 
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+            {product.image?.map((img: any, i: number) => {
+              const highRes = urlFor(img).width(1200).url();
+              return (
+                <button 
+                  key={i} 
+                  onClick={() => setSelectedImage(highRes)} 
+                  className={`relative w-20 h-20 md:w-24 md:h-24 rounded-xl border-2 transition-all flex-shrink-0 overflow-hidden ${selectedImage === highRes ? 'border-rose-600 shadow-sm' : 'border-stone-100'}`}
+                >
+                  <Image src={urlFor(img).width(200).url()} alt="thumb" fill className="object-cover" />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT: CONTENT (Scrollable on mobile) */}
+        <div className="lg:col-span-5 flex flex-col gap-6 md:gap-8">
+          <header className="space-y-1 md:space-y-2">
+            <div className="flex items-center gap-2 text-rose-600 font-bold text-[10px] uppercase tracking-widest">
+              <Star size={12} fill="currentColor" /> Premium Silver Collection
+            </div>
+            <h1 className="text-3xl md:text-5xl font-serif text-stone-900 leading-tight capitalize">{product.title}</h1>
+            <div className="flex items-center gap-4 mt-3">
+               <div className="text-2xl md:text-4xl font-serif text-stone-900">₹{unitPriceTotal.toLocaleString()}</div>
+               <button onClick={() => setShowPriceBreakup(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-rose-600 transition-colors">
+                 <Info size={16}/>
+               </button>
+            </div>
+          </header>
+
+          {/* CUSTOMIZATION: SMALL NOTES SUPPORTED HERE */}
+          {product.extraOptions && product.extraOptions.length > 0 && (
+            <div className="space-y-4 pt-4 border-t border-stone-100">
+              <h3 className="font-serif text-lg text-stone-800">Customize Your Piece</h3>
+              <div className="grid gap-2 md:gap-3">
+                {product.extraOptions.map((opt: ExtraOption, i: number) => {
+                  const active = selectedExtras.some(e => e.optionName === opt.optionName);
                   return (
-                  <button 
-                    key={idx} 
-                    // Set High Res URL on click
-                    onClick={() => setSelectedImage(highResSrc)}
-                    className={`relative w-20 h-20 rounded-md overflow-hidden border transition-all flex-shrink-0 ${selectedImage === highResSrc ? 'border-rose-600 ring-1 ring-rose-600' : 'border-stone-200 hover:border-stone-400'}`}
-                  >
-                    <Image src={thumbnailSrc} alt="thumb" fill className="object-cover" />
-                  </button>
-                  )
-              })}
+                    <button 
+                      key={i} 
+                      onClick={() => toggleExtra(opt)} 
+                      className={`flex items-center justify-between p-3 md:p-4 rounded-xl border-2 text-left transition-all ${active ? 'border-rose-600 bg-rose-50/50' : 'border-stone-100 bg-white'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${active ? 'bg-rose-600 border-rose-600' : 'border-stone-200'}`}>
+                          {active && <CheckCircle2 size={12} className="text-white" />}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-stone-800">{opt.optionName}</span>
+                          {/* SMALL NOTE RENDER */}
+                          {opt.description && <span className="text-[10px] text-stone-500 leading-tight">{opt.description}</span>}
+                        </div>
+                      </div>
+                      <span className="text-sm font-serif text-rose-600 font-bold">+₹{opt.price}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* RIGHT: PRODUCT INFO */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-           
-           {/* Header */}
-           <div>
-              <div className="flex items-center gap-2 mb-2">
-                  <span className="text-rose-600 text-xs font-bold uppercase tracking-wider">{product.category}</span>
-                  <div className="flex items-center gap-1 text-yellow-500 text-xs font-medium">
-                      <Star fill="currentColor" size={12} /> 4.8 (120)
-                  </div>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-serif text-stone-900 leading-tight">{product.title}</h1>
-           </div>
+          {/* ACTION AREA: OPTIMIZED FOR THUMB ACCESS ON MOBILE */}
+          <div className="space-y-4 md:space-y-6 pt-4 border-t border-stone-100">
+             <div className="flex items-center justify-between bg-stone-50 p-4 md:p-6 rounded-2xl md:rounded-3xl">
+                <div className="flex items-center gap-3 bg-white border border-stone-200 rounded-xl p-1">
+                  <button onClick={() => setQuantity(q => Math.max(1, q-1))} className="w-8 h-8 flex items-center justify-center"><Minus size={14}/></button>
+                  <span className="w-6 text-center font-bold text-lg">{quantity}</span>
+                  <button onClick={() => setQuantity(q => Math.min(realTimeStock, q+1))} className="w-8 h-8 flex items-center justify-center"><Plus size={14}/></button>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">Payable</p>
+                  <p className="text-xl md:text-2xl font-serif text-stone-900">₹{totalPrice.toLocaleString()}</p>
+                </div>
+             </div>
 
-           {/* 💰 UNIT PRICE SECTION */}
-           <div className="bg-stone-50 p-5 rounded-xl border border-stone-200 relative">
-              <div className="flex items-end gap-3 mb-1">
-                 <span className="text-4xl font-serif text-stone-900">₹{finalPrice.toLocaleString()}</span>
-                 <button 
-                   onClick={() => setShowPriceBreakup(!showPriceBreakup)}
-                   className="text-stone-400 hover:text-rose-600 transition-colors mb-2"
-                 >
-                    <Info size={20} />
-                 </button>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-stone-500">
-                <span className="bg-white px-2 py-1 border border-stone-200 rounded text-stone-700 font-medium">Weight: {product.weight}g</span>
-                <span>•</span>
-                <span>Silver Rate: ₹{silverRate}/g</span>
-              </div>
-
-              {/* Price Breakup Popup */}
-              {showPriceBreakup && (
-                  <div className="absolute top-full left-0 mt-2 w-full bg-white shadow-xl rounded-lg border border-stone-100 p-4 z-20 animate-in fade-in slide-in-from-top-2">
-                      <h4 className="font-serif text-stone-800 mb-3 text-sm">Price Breakdown</h4>
-                      <div className="space-y-2 text-sm">
-                          <div className="flex justify-between text-stone-600">
-                              <span>Silver Value ({product.weight}g × {silverRate})</span>
-                              <span>₹{breakup?.silverValue?.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between text-stone-600">
-                              <span>Making Charges ({product.makingCharges}%)</span>
-                              <span>+ ₹{breakup?.makingCost?.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between text-stone-600 pb-2 border-b border-dashed border-stone-200">
-                              <span>GST (3%)</span>
-                              <span>+ ₹{breakup?.gst?.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between font-bold text-stone-900 pt-1">
-                              <span>Final Price</span>
-                              <span>₹{finalPrice.toLocaleString()}</span>
-                          </div>
-                      </div>
-                  </div>
-              )}
-           </div>
-
-           {/* Stock Warning */}
-           {!isCheckingStock && !isOutOfStock && realTimeStock < 5 && (
-              <div className="bg-orange-50 border border-orange-100 p-3 rounded-lg flex items-center gap-3">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-                  <p className="text-xs text-orange-800 font-medium">Hurry! Only {realTimeStock} left.</p>
-              </div>
-           )}
-
-           {/* DYNAMIC TOTAL PRICE AREA */}
-           <div className="flex flex-col gap-4 mt-2">
-              <div className="flex flex-col md:flex-row gap-4">
-                  
-                  {/* Quantity Selector */}
-                  <div className="flex items-center border border-stone-300 rounded-lg h-12 w-fit">
-                     <button onClick={decreaseQty} className="px-4 hover:text-rose-600 disabled:opacity-30" disabled={quantity<=1}><Minus size={16}/></button>
-                     <span className="w-8 text-center font-bold text-lg">{quantity}</span>
-                     <button onClick={increaseQty} className="px-4 hover:text-rose-600 disabled:opacity-30" disabled={quantity>=realTimeStock}><Plus size={16}/></button>
-                  </div>
-
-                  {/* Total Amount Display */}
-                  <div className="flex-1 flex flex-col items-end justify-center bg-stone-100 px-4 rounded-lg h-12">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-stone-400 font-medium hidden sm:block">
-                            ({quantity} × ₹{finalPrice.toLocaleString()}) =
-                        </span>
-                        <span className="text-xl font-bold text-stone-900">
-                            Total: ₹{totalPrice.toLocaleString()}
-                        </span>
-                      </div>
-                  </div>
-              </div>
-              
-              {/* Buttons */}
-              <div className="grid grid-cols-2 gap-4">
-                  <button 
-                     onClick={handleAddToCart}
-                     disabled={isOutOfStock}
-                     className="h-12 border border-stone-300 rounded-lg font-medium hover:bg-stone-50 transition-all flex items-center justify-center gap-2 text-stone-700"
-                  >
-                     <ShoppingBag size={18} /> Add to Cart
-                  </button>
-                  <button 
-                     onClick={handleBuyNow} 
-                     disabled={isOutOfStock}
-                     className="h-12 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-100"
-                  >
-                     <Zap size={18} fill="currentColor"/> Buy Now
-                  </button>
-              </div>
-           </div>
-
-           {/* Accordion */}
-           <div className="mt-4 border-t border-stone-200">
-               <div className="border-b border-stone-200">
-                   <button onClick={() => setOpenAccordion(openAccordion === 'desc' ? null : 'desc')} className="w-full py-4 flex justify-between items-center text-left">
-                       <span className="font-serif text-stone-800">Product Description</span>
-                       <ChevronDown size={16} className={`transition-transform ${openAccordion === 'desc' ? 'rotate-180' : ''}`} />
-                   </button>
-                   {openAccordion === 'desc' && (
-                       <div className="pb-4 text-stone-600 text-sm leading-relaxed">{product.description}</div>
-                   )}
-               </div>
-               <div className="border-b border-stone-200">
-                   <button onClick={() => setOpenAccordion(openAccordion === 'ship' ? null : 'ship')} className="w-full py-4 flex justify-between items-center text-left">
-                       <span className="font-serif text-stone-800">Shipping & Returns</span>
-                       <ChevronDown size={16} className={`transition-transform ${openAccordion === 'ship' ? 'rotate-180' : ''}`} />
-                   </button>
-                   {openAccordion === 'ship' && (
-                       <div className="pb-4 text-stone-600 text-sm leading-relaxed">
-                           <div className="flex items-center gap-2 mb-2"><Truck size={16}/> Free shipping above ₹2000</div>
-                           <div className="flex items-center gap-2"><ShieldCheck size={16}/> 7-day easy return policy.</div>
-                       </div>
-                   )}
-               </div>
-           </div>
-           
-           <div className="flex items-center gap-2 mt-2">
-               <MapPin size={18} className="text-stone-400" />
-               <input type="text" placeholder="Enter Pincode" className="text-sm border-b border-stone-300 focus:border-rose-600 outline-none py-1 w-48 bg-transparent" />
-               <button className="text-xs font-bold text-rose-600 uppercase">Check</button>
-           </div>
-        </div>
-      </div>
-
-      {/* RELATED PRODUCTS */}
-      <div className="border-t border-stone-200 pt-16">
-          <h2 className="text-3xl font-serif text-stone-900 mb-8">Complete the Look</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {relatedProducts.length > 0 ? (
-                  relatedProducts.map((item) => (
-                      <ProductCard key={item._id} item={item} silverRate={silverRate} />
-                  ))
-              ) : (
-                  <p className="col-span-4 text-center text-stone-400 py-10">Loading...</p>
-              )}
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onClick={handleAddToCart} disabled={isOutOfStock} className="h-14 rounded-xl border-2 border-stone-900 font-bold hover:bg-stone-900 hover:text-white transition-all disabled:opacity-30">
+                  Add to Cart
+                </button>
+                <button onClick={() => { handleAddToCart(); router.push('/cart'); }} disabled={isOutOfStock} className="h-14 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 disabled:opacity-30">
+                  Buy Now
+                </button>
+             </div>
           </div>
+
+          {/* ACCORDIONS */}
+          <div className="space-y-1">
+             {['desc', 'ship'].map((tab) => (
+               <div key={tab} className="border-b border-stone-100">
+                  <button onClick={() => setOpenAccordion(openAccordion === tab ? null : tab)} className="w-full py-4 flex justify-between items-center text-left font-serif text-stone-800">
+                    {tab === 'desc' ? 'Product Description' : 'Shipping & Returns'}
+                    <ChevronDown size={16} className={`transition-transform ${openAccordion === tab ? 'rotate-180' : ''}`} />
+                  </button>
+                  <AnimatePresence>
+                    {openAccordion === tab && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                        <p className="pb-4 text-xs md:text-sm text-stone-500 leading-relaxed">{tab === 'desc' ? product.description : "Kankariya Jewellers offers free insured shipping. Items are shipped within 48 hours."}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+               </div>
+             ))}
+          </div>
+        </div>
       </div>
+
+      {/* PRICE BREAKUP MODAL (Centered for both Mobile & Desktop) */}
+      <AnimatePresence>
+        {showPriceBreakup && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+              <button onClick={() => setShowPriceBreakup(false)} className="absolute top-4 right-4 p-1 hover:bg-stone-50 rounded-full"><X size={20}/></button>
+              <h2 className="text-xl font-serif mb-6 text-stone-900">Price Breakdown</h2>
+              <div className="space-y-4 text-sm text-stone-600">
+                <div className="flex justify-between"><span>Silver ({product.weight}g)</span><span>₹{breakup?.silverValue?.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Making Charges</span><span>₹{breakup?.makingCost?.toLocaleString()}</span></div>
+                {selectedExtras.map((e, i) => (
+                  <div key={i} className="flex justify-between text-rose-600 font-medium"><span>+ {e.optionName}</span><span>₹{e.price.toLocaleString()}</span></div>
+                ))}
+                <div className="flex justify-between border-t border-stone-100 pt-4 font-bold text-stone-900"><span>Grand Total</span><span>₹{unitPriceTotal.toLocaleString()}</span></div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -52,6 +52,25 @@ export default defineType({
       initialValue: 1, 
     }),
 
+    // schemas/product.js ke fields array ke andar add karein:
+
+defineField({
+  name: 'extraOptions',
+  title: 'Extra Add-ons / Customizations',
+  type: 'array',
+  description: 'Add extra things like Diamonds, Engraving, or Special Polish.',
+  of: [
+    {
+      type: 'object',
+      fields: [
+        { name: 'optionName', title: 'Option Name', type: 'string', description: 'e.g., Extra Diamond' },
+        { name: 'price', title: 'Additional Price (₹)', type: 'number', validation: (Rule) => Rule.min(0) },
+        { name: 'description', title: 'Small Note', type: 'string' }
+      ]
+    }
+  ]
+}),
+
     // --- CATEGORY & DETAILS ---
     defineField({
       name: 'category',

@@ -1,22 +1,33 @@
-// src/types.ts (Update this file)
+export interface ExtraOption {
+    optionName: string;
+    price: number;
+    description?: string;
+}
 
 export interface Product {
     _id: string;
     title: string;
+    description?: string; // Add this for product info
     
-    // 👇 Ye 2 naye fields add karna zaroori hai (Error fix karne ke liye)
+    // Core Logic
     weight: number;
     makingCharges: number;
 
-    // Price ab optional (?) rakhein, kyunki database se fixed price nahi aayega
+    // Pricing
     price?: number; 
     originalPrice?: number;
 
+    // Details
     slug: string; 
     imageUrl: string;
+    image?: any[]; // Gallery ke liye zaroori he
     category: string;
-    isHotDeal: boolean;
+    isHotDeal?: boolean;
     stockQuantity: number;
+
+    // --- ✨ In 2 lines se error chala jayega ---
+    extraOptions?: ExtraOption[];   // Sanity data ke liye
+    selectedExtras?: ExtraOption[]; // Selection store karne ke liye
 }
 
 export interface Address {
