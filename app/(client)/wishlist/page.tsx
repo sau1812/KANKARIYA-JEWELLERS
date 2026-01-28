@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, ShoppingBag, Trash2, BellRing } from 'lucide-react' // 👈 BellRing add kiya
+import { Heart, ShoppingBag, Trash2, BellRing, CheckCircle2, AlertCircle } from 'lucide-react' 
 import { useWishlist } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { client } from '@/sanity/lib/client'
@@ -29,6 +29,7 @@ export default function WishlistPage() {
   // Marketing Form State
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error' | null, msg: string }>({ type: null, msg: "" });
 
   useEffect(() => {
     setIsClient(true);
@@ -56,26 +57,37 @@ export default function WishlistPage() {
     const productWithPrice = { ...product, price: finalPrice };
     addToCart(productWithPrice, 1);
     removeFromWishlist(product._id);
-    alert("Moved to Cart!");
+    // Alert hatakar yaha toast ya silent notification use kar sakte hain
   };
 
-  // Marketing Handle Function
+  // Marketing Handle Function (Alert Hata Diya Hai)
   const handleSubscribe = async () => {
-    if (phone.length !== 10) return alert("Please enter valid 10-digit number");
+    if (phone.length !== 10) {
+        setStatus({ type: 'error', msg: "Please enter a valid 10-digit number" });
+        return;
+    }
+    
     setIsSubmitting(true);
+    setStatus({ type: null, msg: "" });
+
     try {
       const res = await fetch("/api/marketing/subscribe", {
         method: "POST",
         body: JSON.stringify({ phoneNumber: phone }),
       });
+      
       if (res.ok) {
-        alert("✅ Thank you! Naye offers ki jankari aapko WhatsApp par milegi.");
+        setStatus({ type: 'success', msg: "✅ Success! You'll receive updates on WhatsApp soon." });
         setPhone("");
+      } else {
+        setStatus({ type: 'error', msg: "❌ Server issue. Please try again." });
       }
     } catch (err) {
-      alert("❌ Error saving number.");
+      setStatus({ type: 'error', msg: "❌ Error saving number." });
     } finally {
       setIsSubmitting(false);
+      // 3 second baad message hide karne ke liye
+      setTimeout(() => setStatus({ type: null, msg: "" }), 4000);
     }
   };
 
@@ -167,7 +179,7 @@ export default function WishlistPage() {
           </>
         )}
 
-        {/* --- 📢 MARKETING SECTION ADDED HERE --- */}
+        {/* --- 📢 MARKETING SECTION --- */}
         <div className="mt-20 max-w-2xl mx-auto bg-stone-100 border-2 border-dashed border-stone-300 rounded-3xl p-8 text-center shadow-inner">
            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4 shadow-sm text-rose-600">
               <BellRing size={28} />
@@ -177,23 +189,32 @@ export default function WishlistPage() {
              Naya product launch ya special discount aane par direct WhatsApp par update payein.
            </p>
            
-           <div className="flex flex-col sm:flex-row items-center gap-3 justify-center">
+           <div className="flex flex-col sm:flex-row items-center gap-3 justify-center mb-4">
               <input 
-                 type="tel" 
-                 placeholder="Enter 10 digit number"
-                 maxLength={10}
-                 value={phone}
-                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                 className="w-full sm:w-72 px-5 py-3 rounded-2xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-center font-bold tracking-widest"
+                  type="tel" 
+                  placeholder="Enter 10 digit number"
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  className="w-full sm:w-72 px-5 py-3 rounded-2xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-center font-bold tracking-widest"
               />
               <button 
-                 onClick={handleSubscribe}
-                 disabled={isSubmitting}
-                 className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-8 py-3 rounded-2xl font-bold transition-all disabled:opacity-50 shadow-md active:scale-95"
+                  onClick={handleSubscribe}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-8 py-3 rounded-2xl font-bold transition-all disabled:opacity-50 shadow-md active:scale-95"
               >
-                 {isSubmitting ? "Registering..." : "Notify Me"}
+                  {isSubmitting ? "Registering..." : "Notify Me"}
               </button>
            </div>
+
+           {/* --- 🔄 IN-UI MESSAGES (Alert Replacement) --- */}
+           {status.type && (
+             <div className={`flex items-center justify-center gap-2 text-sm font-bold animate-pulse ${status.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {status.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                {status.msg}
+             </div>
+           )}
+
            <p className="mt-4 text-[10px] text-stone-400 uppercase tracking-tighter">
              *Safe & Secure | No Spam Policy
            </p>
