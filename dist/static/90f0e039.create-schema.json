@@ -1,0 +1,999 @@
+[
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "title",
+        "type": "string",
+        "title": "Product Title"
+      },
+      {
+        "options": {
+          "source": "title",
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "slug",
+        "type": "slug"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Product ka wajan dalein.",
+        "name": "weight",
+        "type": "number",
+        "title": "Silver Weight (grams)"
+      },
+      {
+        "initialValue": 10,
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Kitne percent making charge lagana hai? (e.g., Type 15 for 15%)",
+        "name": "makingCharges",
+        "type": "number",
+        "title": "Making Charges (%)"
+      },
+      {
+        "initialValue": 1,
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "stockQuantity",
+        "type": "number"
+      },
+      {
+        "description": "Add extra things like Diamonds, Engraving, or Special Polish.",
+        "of": [
+          {
+            "fields": [
+              {
+                "description": "e.g., Extra Diamond",
+                "name": "optionName",
+                "type": "string"
+              },
+              {
+                "validation": [
+                  {
+                    "rules": [
+                      {
+                        "flag": "min",
+                        "constraint": 0
+                      }
+                    ],
+                    "level": "error"
+                  }
+                ],
+                "name": "price",
+                "type": "number",
+                "title": "Additional Price (₹)"
+              },
+              {
+                "name": "description",
+                "type": "string",
+                "title": "Small Note"
+              }
+            ],
+            "type": "object"
+          }
+        ],
+        "name": "extraOptions",
+        "type": "array",
+        "title": "Extra Add-ons / Customizations"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Ring",
+              "value": "ring"
+            },
+            {
+              "title": "Necklace",
+              "value": "necklace"
+            },
+            {
+              "title": "Earring",
+              "value": "earring"
+            },
+            {
+              "title": "Bracelet",
+              "value": "bracelet"
+            },
+            {
+              "title": "Bangle",
+              "value": "bangle"
+            },
+            {
+              "title": "Silver Coins",
+              "value": "coins"
+            }
+          ]
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "valid",
+                "constraint": [
+                  "ring",
+                  "necklace",
+                  "earring",
+                  "bracelet",
+                  "bangle",
+                  "coins"
+                ]
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Women",
+              "value": "women"
+            },
+            {
+              "title": "Men",
+              "value": "men"
+            },
+            {
+              "title": "Unisex",
+              "value": "unisex"
+            },
+            {
+              "title": "Kids",
+              "value": "kids"
+            }
+          ],
+          "layout": "radio",
+          "direction": "horizontal"
+        },
+        "initialValue": "women",
+        "name": "gender",
+        "type": "string"
+      },
+      {
+        "initialValue": false,
+        "name": "isHotDeal",
+        "type": "boolean",
+        "title": "best seller 🔥"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "of": [
+          {
+            "options": {
+              "hotspot": true
+            },
+            "type": "image"
+          }
+        ],
+        "name": "image",
+        "type": "array",
+        "title": "Product Images"
+      },
+      {
+        "name": "description",
+        "type": "text"
+      }
+    ],
+    "name": "product",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "orderNumber",
+        "type": "string"
+      },
+      {
+        "fields": [
+          {
+            "name": "id",
+            "type": "string",
+            "title": "Invoice ID"
+          },
+          {
+            "name": "invoiceNumber",
+            "type": "string"
+          },
+          {
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "uri",
+                    "constraint": {
+                      "options": {
+                        "scheme": [
+                          "/^http$/",
+                          "/^https$/"
+                        ],
+                        "allowRelative": false,
+                        "relativeOnly": false,
+                        "allowCredentials": false
+                      }
+                    }
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "hosted_invoice_url",
+            "type": "url",
+            "title": "Invoice URL"
+          }
+        ],
+        "name": "invoice",
+        "type": "object",
+        "title": "Invoice Details"
+      },
+      {
+        "name": "stripeCheckoutSessionId",
+        "type": "string",
+        "title": "Stripe Checkout Session ID"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "stripeCustomerId",
+        "type": "string",
+        "title": "Stripe Customer ID"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "clerkUserId",
+        "type": "string",
+        "title": "Clerk User ID"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "customerName",
+        "type": "string"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "email",
+        "type": "string",
+        "title": "Email Address"
+      },
+      {
+        "name": "phone",
+        "type": "string",
+        "title": "Phone Number"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "stripePaymentIntentId",
+        "type": "string",
+        "title": "Stripe Payment Intent ID"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "totalPrice",
+        "type": "number"
+      },
+      {
+        "initialValue": "INR",
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "currency",
+        "type": "string"
+      },
+      {
+        "initialValue": 0,
+        "name": "amountDiscount",
+        "type": "number"
+      },
+      {
+        "of": [
+          {
+            "fields": [
+              {
+                "validation": [
+                  {
+                    "rules": [
+                      {
+                        "flag": "presence",
+                        "constraint": "required"
+                      }
+                    ],
+                    "level": "error"
+                  }
+                ],
+                "to": [
+                  {
+                    "type": "product"
+                  }
+                ],
+                "name": "product",
+                "type": "reference",
+                "title": "Product Bought"
+              },
+              {
+                "initialValue": 1,
+                "name": "quantity",
+                "type": "number",
+                "title": "Quantity Purchased"
+              },
+              {
+                "name": "priceAtPurchase",
+                "type": "number",
+                "title": "Price per unit (at purchase)"
+              },
+              {
+                "of": [
+                  {
+                    "fields": [
+                      {
+                        "name": "optionName",
+                        "type": "string"
+                      },
+                      {
+                        "name": "price",
+                        "type": "number"
+                      },
+                      {
+                        "name": "description",
+                        "type": "string",
+                        "title": "Small Note / Description"
+                      }
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "name": "selectedExtras",
+                "type": "array",
+                "title": "Selected Extras (Customizations)"
+              }
+            ],
+            "type": "object"
+          }
+        ],
+        "name": "products",
+        "type": "array"
+      },
+      {
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "type": "string",
+            "title": "Street Address"
+          },
+          {
+            "name": "city",
+            "type": "string"
+          },
+          {
+            "name": "state",
+            "type": "string"
+          },
+          {
+            "name": "pinCode",
+            "type": "string"
+          },
+          {
+            "name": "phone",
+            "type": "string",
+            "title": "Phone Number"
+          }
+        ],
+        "name": "shippingAddress",
+        "type": "object"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Pending",
+              "value": "pending"
+            },
+            {
+              "title": "Processing",
+              "value": "processing"
+            },
+            {
+              "title": "Shipped",
+              "value": "shipped"
+            },
+            {
+              "title": "Delivered",
+              "value": "delivered"
+            },
+            {
+              "title": "Cancelled",
+              "value": "cancelled"
+            }
+          ]
+        },
+        "initialValue": "pending",
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "valid",
+                "constraint": [
+                  "pending",
+                  "processing",
+                  "shipped",
+                  "delivered",
+                  "cancelled"
+                ]
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "status",
+        "type": "string",
+        "title": "Order Status"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "orderDate",
+        "type": "datetime"
+      }
+    ],
+    "name": "order",
+    "type": "document",
+    "title": "Orders"
+  },
+  {
+    "fields": [
+      {
+        "initialValue": "Discover",
+        "name": "headingTop",
+        "type": "string",
+        "title": "Heading Top Line"
+      },
+      {
+        "initialValue": "Essence",
+        "name": "headingHighlight",
+        "type": "string",
+        "title": "Highlighted Word (Cursive/Red)"
+      },
+      {
+        "initialValue": "of Pure Luxury",
+        "name": "headingBottom",
+        "type": "string",
+        "title": "Heading Bottom Line"
+      },
+      {
+        "initialValue": "Experience craftsmanship like never before.",
+        "name": "description",
+        "type": "text",
+        "title": "Description Text"
+      },
+      {
+        "initialValue": "FLAT 10% OFF on your first order",
+        "description": "Example: FLAT 10% OFF on your first order",
+        "name": "offerText",
+        "type": "string",
+        "title": "Offer / Discount Text"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "name": "image1",
+        "type": "image",
+        "title": "Back Image (Floating)"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "name": "image2",
+        "type": "image",
+        "title": "Front Image (Main)"
+      }
+    ],
+    "name": "hero",
+    "type": "document",
+    "title": "Home Banner (Hero Section)"
+  },
+  {
+    "fields": [
+      {
+        "hidden": true,
+        "name": "userId",
+        "type": "string",
+        "title": "User ID"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "max",
+                "constraint": 50
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "A friendly name for the address (e.g., Home, Office)",
+        "name": "name",
+        "type": "string",
+        "title": "Address Label"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "title": "Email Address"
+      },
+      {
+        "name": "phone",
+        "type": "string",
+        "title": "Phone Number"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "max",
+                "constraint": 100
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "The street address including house/building number",
+        "name": "streetAddress",
+        "type": "string"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "city",
+        "type": "string"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "state",
+        "type": "string",
+        "title": "State/Province"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "regex",
+                "constraint": {
+                  "pattern": "/^[1-9][0-9]{5}$/",
+                  "name": "pin code",
+                  "invert": false
+                }
+              }
+            ],
+            "level": "error",
+            "message": "Enter a valid 6-digit pin code."
+          }
+        ],
+        "name": "pinCode",
+        "type": "string"
+      },
+      {
+        "initialValue": false,
+        "name": "isDefault",
+        "type": "boolean",
+        "title": "Set as Default Address"
+      }
+    ],
+    "name": "address",
+    "type": "document",
+    "title": "Addresses"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "stringCasing",
+                "constraint": "uppercase"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "e.g., SAVE20 (Must be unique)",
+        "name": "code",
+        "type": "string",
+        "title": "Coupon Code"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 1
+              },
+              {
+                "flag": "max",
+                "constraint": 100
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "e.g., 10 for 10% off",
+        "name": "discountPercentage",
+        "type": "number"
+      },
+      {
+        "initialValue": true,
+        "description": "Toggle this to enable/disable coupon without deleting it",
+        "name": "isActive",
+        "type": "boolean"
+      }
+    ],
+    "name": "coupon",
+    "type": "document",
+    "title": "Coupons"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Yahan rate change karne se puri website ke prices update ho jayenge.",
+        "name": "ratePerGram",
+        "type": "number",
+        "title": "Today's Silver Rate (per gram) ₹"
+      }
+    ],
+    "name": "silverRate",
+    "type": "document",
+    "title": "⚙️ Daily Silver Rate"
+  },
+  {
+    "fields": [
+      {
+        "name": "name",
+        "type": "string",
+        "title": "Customer Name"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 1
+              },
+              {
+                "flag": "max",
+                "constraint": 5
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Rating 1 se 5 ke beech",
+        "name": "rating",
+        "type": "number"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "comment",
+        "type": "text",
+        "title": "Review Comment"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "to": [
+          {
+            "type": "product"
+          }
+        ],
+        "name": "product",
+        "type": "reference"
+      },
+      {
+        "initialValue": false,
+        "description": "Sirf approved reviews hi live dikhenge",
+        "name": "approved",
+        "type": "boolean"
+      },
+      {
+        "name": "createdAt",
+        "type": "datetime"
+      }
+    ],
+    "name": "review",
+    "type": "document",
+    "title": "Customer Reviews"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 10
+              },
+              {
+                "flag": "max",
+                "constraint": 10
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "phoneNumber",
+        "type": "string"
+      }
+    ],
+    "name": "marketingNumber",
+    "type": "document",
+    "title": "Marketing Subscribers"
+  }
+]

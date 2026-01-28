@@ -4,7 +4,8 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Loader2, Package, ShoppingCart, LayoutDashboard, PlusCircle, ExternalLink } from "lucide-react";
+// 👇 TrendingUp icon add kiya gaya hai analytics ke liye
+import { Loader2, Package, ShoppingCart, PlusCircle, ExternalLink, TrendingUp } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -32,8 +33,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   
   if (!user || user.id !== ADMIN_ID) return null;
 
+  // 👇 Updated navItems: Dashboard, Best Sellers, aur Manage Products
   const navItems = [
     { name: "Orders Dashboard", href: "/admin", icon: ShoppingCart },
+    { name: "Best Sellers", href: "/admin/best-sellers", icon: TrendingUp }, 
     { name: "Manage Products", href: "/admin/products", icon: Package },
   ];
 
@@ -84,7 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="p-6 border-t border-stone-100">
             <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-full bg-stone-200 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-stone-200 overflow-hidden border border-stone-100">
                     {user.imageUrl && <img src={user.imageUrl} alt="profile" className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 overflow-hidden">
