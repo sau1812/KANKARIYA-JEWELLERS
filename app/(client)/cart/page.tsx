@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
-  Trash2, ArrowRight, Tag, ShoppingBag, Loader2, Minus, Plus, Info, ShieldCheck, Truck, CheckCircle2 
+  Trash2, ArrowRight, Tag, ShoppingBag, Loader2, Minus, Plus, Info, ShieldCheck, Truck, CheckCircle2, AlertCircle 
 } from 'lucide-react'
 import { useCart } from '@/context/CartContext' 
 import { client } from '@/sanity/lib/client'
@@ -26,7 +26,7 @@ export default function CartPage() {
   // --- STATE ---
   const [silverRate, setSilverRate] = useState(0);
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null); // Store coupon object
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null); 
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState<{ type: string, text: string } | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -34,18 +34,30 @@ export default function CartPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [stockStatus, setStockStatus] = useState<Record<string, number>>({}); // 👈 New: To track real-time stock
 
   useEffect(() => {
     setIsClient(true);
-    const fetchRate = async () => {
+    const fetchData = async () => {
+        // Fetch Rate
         const rate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
         setSilverRate(rate || 0);
+
+        // 👈 New: Fetch Real-time Stock for all items in cart
+        if (cartItems.length > 0) {
+          const ids = cartItems.map(item => item._id);
+          const stocks = await client.fetch(`*[_type == "product" && _id in $ids]{_id, stockQuantity}`, { ids });
+          const stockMap = stocks.reduce((acc: any, curr: any) => {
+            acc[curr._id] = curr.stockQuantity;
+            return acc;
+          }, {});
+          setStockStatus(stockMap);
+        }
     };
-    fetchRate();
-  }, []);
+    fetchData();
+  }, [cartItems.length]); // Refresh when item count changes
 
   // --- CALCULATIONS ---
-  // Memoize breakdown to avoid unnecessary recalculations
   const cartBreakdown = useMemo(() => {
     return cartItems.reduce((acc, item) => {
        const { breakup } = calculateSilverPrice(item.weight, silverRate, item.makingCharges);
@@ -59,7 +71,6 @@ export default function CartPage() {
     }, { silverValue: 0, makingCost: 0, gst: 0, extrasTotal: 0 });
   }, [cartItems, silverRate]);
 
-  // Recalculate discount whenever makingCost or appliedCoupon changes
   useEffect(() => {
     if (appliedCoupon) {
       const discountVal = Math.round(cartBreakdown.makingCost * (appliedCoupon.discountPercentage / 100));
@@ -82,7 +93,7 @@ export default function CartPage() {
         const coupon = await client.fetch(query, { code: couponCode.toUpperCase() });
         
         if (coupon) {
-            setAppliedCoupon(coupon); // Save coupon to state
+            setAppliedCoupon(coupon); 
             const discountVal = Math.round(cartBreakdown.makingCost * (coupon.discountPercentage / 100));
             setDiscount(discountVal);
             setCouponMessage({ type: "success", text: `Coupon Applied! Saved ₹${discountVal} on Making Charges` });
@@ -103,6 +114,14 @@ export default function CartPage() {
         alert("Please select a shipping address.");
         return;
     }
+
+    // 👈 Real-time Stock Validation before processing
+    const itemsOutOfStock = cartItems.filter(item => item.quantity > (stockStatus[item._id] || 0));
+    if (itemsOutOfStock.length > 0) {
+        alert(`Some items in your cart are no longer available in the requested quantity. Please check the alerts.`);
+        return;
+    }
+
     setIsProcessing(true);
     try {
         const userId = user?.id || "guest_user"; 
@@ -163,8 +182,11 @@ export default function CartPage() {
           <div className="flex-1 flex flex-col gap-4">
             {cartItems.map((item) => {
                 const { breakup } = calculateSilverPrice(item.weight, silverRate, item.makingCharges);
+                const currentAvailableStock = stockStatus[item._id] ?? 99; // 👈 Track stock
+                const isInsufficient = item.quantity > currentAvailableStock;
+
                 return (
-                    <div key={item._id} className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm md:grid md:grid-cols-12 md:items-center relative">
+                    <div key={item._id} className={`bg-white p-5 rounded-xl border shadow-sm md:grid md:grid-cols-12 md:items-center relative transition-all ${isInsufficient ? 'border-rose-300 bg-rose-50/30' : 'border-stone-200'}`}>
                         <div className="flex gap-4 md:col-span-6 items-center">
                             <div className="relative w-20 h-20 bg-stone-100 rounded-lg overflow-hidden border">
                                 {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
@@ -180,14 +202,26 @@ export default function CartPage() {
                                     ))}
                                   </div>
                                 )}
+                                {/* 👈 Stock Alert Label */}
+                                {isInsufficient && (
+                                  <p className="text-rose-600 text-[10px] font-bold mt-2 flex items-center gap-1">
+                                    <AlertCircle size={12}/> Only {currentAvailableStock} units available
+                                  </p>
+                                )}
                             </div>
                         </div>
 
                         <div className="flex items-center justify-center md:col-span-2 mt-4 md:mt-0">
                             <div className="flex items-center bg-stone-50 border rounded-lg h-9">
-                                <button onClick={() => updateQuantity(item._id, item.quantity - 1)} className="px-3"><Minus size={14}/></button>
+                                <button onClick={() => updateQuantity(item._id, item.quantity - 1)} className="px-3 hover:text-rose-600 transition-colors"><Minus size={14}/></button>
                                 <span className="font-bold w-6 text-center">{item.quantity}</span>
-                                <button onClick={() => updateQuantity(item._id, item.quantity + 1)} className="px-3"><Plus size={14}/></button>
+                                <button 
+                                  onClick={() => updateQuantity(item._id, item.quantity + 1)} 
+                                  className={`px-3 transition-colors ${item.quantity >= currentAvailableStock ? 'text-stone-300 cursor-not-allowed' : 'hover:text-rose-600'}`}
+                                  disabled={item.quantity >= currentAvailableStock}
+                                >
+                                  <Plus size={14}/>
+                                </button>
                             </div>
                         </div>
 
@@ -220,7 +254,6 @@ export default function CartPage() {
                  {cartBreakdown.extrasTotal > 0 && <div className="flex justify-between text-rose-600 font-bold"><span>Customizations</span><span>+₹{cartBreakdown.extrasTotal.toLocaleString()}</span></div>}
                  <div className="flex justify-between text-stone-500"><span>GST (3%)</span><span>+₹{cartBreakdown.gst.toLocaleString()}</span></div>
                  
-                 {/* Discount Display */}
                  {discount > 0 && (
                     <div className="flex flex-col gap-1 bg-green-50 p-2 rounded border border-green-100">
                         <div className="flex justify-between text-green-700 font-bold">
@@ -261,12 +294,12 @@ export default function CartPage() {
 
               <button 
                 onClick={handleCheckout} 
-                disabled={!selectedAddress || isProcessing} 
+                disabled={!selectedAddress || isProcessing || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))} 
                 className={`w-full py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all ${
-                    !selectedAddress ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-rose-600 text-white hover:bg-rose-700'
+                    (!selectedAddress || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))) ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-100'
                 }`}
               >
-                  {isProcessing ? <Loader2 className="animate-spin"/> : <>Checkout <ArrowRight size={20}/></>}
+                  {isProcessing ? <Loader2 className="animate-spin"/> : <>Confirm Order <ArrowRight size={20}/></>}
               </button>
               {!selectedAddress && <p className="text-[10px] text-center mt-2 text-stone-400">Please select an address to proceed</p>}
             </div>

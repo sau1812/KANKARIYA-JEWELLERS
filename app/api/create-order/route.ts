@@ -31,9 +31,22 @@ export async function POST(req: Request) {
     let calculatedTotal = 0;
     const finalOrderItems = [];
     
+    // --- TRANSACTION START (FOR STOCK UPDATE) ---
+    const transaction = client.transaction();
+
     for (const cartItem of cartItems) {
         const product = products.find((p: any) => p._id === cartItem._id);
         if (!product) continue;
+
+        // 🚨 STOCK VALIDATION
+        if (product.stockQuantity < cartItem.quantity) {
+          return NextResponse.json({ message: `Insufficient stock for ${product.title}` }, { status: 400 });
+        }
+
+        // 📉 DECREASE STOCK LOGIC (Added to transaction)
+        transaction.patch(product._id, (p) => 
+          p.dec({ stockQuantity: cartItem.quantity })
+        );
 
         let unitPrice = product.weight > 0 
           ? calculateItemPrice(product.weight, currentSilverRate, product.makingCharges) 
@@ -42,7 +55,6 @@ export async function POST(req: Request) {
         let extrasPriceTotal = 0;
         const validatedExtras: any[] = [];
 
-        // ✨ FIX: Har extra item ko unique _key aur description ke saath save karna
         if (cartItem.selectedExtras && cartItem.selectedExtras.length > 0) {
             cartItem.selectedExtras.forEach((extra: any) => {
                 const validOption = product.extraOptions?.find((o: any) => o.optionName === extra.optionName);
@@ -52,7 +64,7 @@ export async function POST(req: Request) {
                         _key: `extra-${Math.random().toString(36).substring(2, 9)}`, 
                         optionName: validOption.optionName,
                         price: validOption.price,
-                        description: validOption.description || "" // "Small Note" yahan save hoga
+                        description: validOption.description || ""
                     });
                 }
             });
@@ -67,7 +79,7 @@ export async function POST(req: Request) {
             quantity: cartItem.quantity,
             priceAtPurchase: totalUnitPrice,
             productName: product.title,
-            selectedExtras: validatedExtras // Correct mapping inside products array
+            selectedExtras: validatedExtras
         });
     }
 
@@ -78,7 +90,8 @@ export async function POST(req: Request) {
         if (coupon) discountAmount = Math.round(calculatedTotal * (coupon.discountPercentage / 100));
     }
 
-    const newOrder = await client.create({
+    // 📦 CREATE ORDER LOGIC (Added to transaction)
+    const orderDoc = {
         _type: "order",
         orderNumber: `ORD-${Date.now()}`,
         orderDate: new Date().toISOString(),
@@ -93,7 +106,7 @@ export async function POST(req: Request) {
             pinCode: shippingAddress.pinCode,
             phone: shippingAddress.phone,
         },
-        products: finalOrderItems, // Extras ab iske andar hain
+        products: finalOrderItems,
         totalPrice: calculatedTotal + shippingCost - discountAmount,
         amountDiscount: discountAmount,
         currency: "INR",
@@ -101,10 +114,18 @@ export async function POST(req: Request) {
         clerkUserId: userId,
         stripeCustomerId: "manual_order",
         stripePaymentIntentId: "cod_pending",
-    });
+    };
 
-    return NextResponse.json({ orderId: newOrder.orderNumber }, { status: 200 });
+    transaction.create(orderDoc);
+
+    // ✅ COMMIT BOTH (Stock Update + Order Creation)
+    const result = await transaction.commit();
+
+    // Result se order number nikalne ke liye humne wahi number use kiya jo upar generate kiya tha
+    return NextResponse.json({ orderId: orderDoc.orderNumber }, { status: 200 });
+
   } catch (error) {
+    console.error("Order Creation Error:", error);
     return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 }

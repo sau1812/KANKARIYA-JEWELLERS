@@ -94,7 +94,7 @@ async function HomeBanner() {
              </div>
 
              <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto pt-2">
-                <Link href="/silver" className="bg-[#D61C22] text-white px-8 py-4 md:rounded-tl-2xl md:rounded-br-2xl font-medium tracking-wide hover:bg-[#B0171C] transition-all duration-300 shadow-xl shadow-red-200 flex items-center justify-center gap-2 group">
+                <Link href="/deal" className="bg-[#D61C22] text-white px-8 py-4 md:rounded-tl-2xl md:rounded-br-2xl font-medium tracking-wide hover:bg-[#B0171C] transition-all duration-300 shadow-xl shadow-red-200 flex items-center justify-center gap-2 group">
                   Explore Collection
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>

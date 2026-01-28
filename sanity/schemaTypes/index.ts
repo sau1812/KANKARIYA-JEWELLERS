@@ -4,10 +4,12 @@ import order from './orderType'
 import hero from './hero'
 import { addressType } from './addressType' // Ye Named Export tha (sahi hai)
 import silverRate from './silverRate'
+import  review  from './review'
 
 // 👇 CHANGE HERE: Remove { } because it is a default export
 import coupon from './coupon' 
+import subscribers from './subscribers'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
-  types: [product, order, hero, addressType, coupon, silverRate],
+  types: [product, order, hero, addressType, coupon, silverRate, review, subscribers],
 }

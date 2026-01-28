@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Minus, Plus, Star, Info, ChevronDown, CheckCircle2, X, ArrowRight
+  Minus, Plus, Star, Info, ChevronDown, CheckCircle2, X, ArrowRight, Share2 // 👈 Share2 add kiya
 } from 'lucide-react'
 import { client } from '@/sanity/lib/client'
 import { useCart } from '@/context/CartContext'
@@ -13,7 +13,9 @@ import imageUrlBuilder from '@sanity/image-url'
 import { ExtraOption } from '@/src/types' 
 import { calculateSilverPrice } from '@/utils/calculatePrice' 
 import Link from 'next/link'
-import ProductCard from './ProductCard' // 👈 Aapka ProductCard component
+import ProductCard from './ProductCard' 
+import ReviewSection from '@/components/ReviewSection' 
+import ReviewList from '@/components/ReviewList' 
 
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { return builder.image(source) }
@@ -34,6 +36,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const [showPriceBreakup, setShowPriceBreakup] = useState(false);
   const [selectedExtras, setSelectedExtras] = useState<ExtraOption[]>([]);
   const [openAccordion, setOpenAccordion] = useState<string | null>('desc');
+  const [avgRating, setAvgRating] = useState<{score: string, count: number} | null>(null);
 
   const { addToCart } = useCart();
   const router = useRouter();
@@ -48,21 +51,47 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const totalPrice = unitPriceTotal * quantity;
   const isOutOfStock = realTimeStock === 0;
 
+  // 👇 NEW: SHARE FUNCTION
+  const handleShare = async () => {
+    const shareData = {
+      title: product.title,
+      text: `Check out this beautiful ${product.title} from Kankariya Jewellers!`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Link copied to clipboard!");
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rate, stock, suggested] = await Promise.all([
+        const [rate, stock, suggested, reviewsData] = await Promise.all([
           client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
           client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id }),
-          // Fetching products from same category for suggestions
           client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]`, { 
             cat: product.category, 
             id: product._id 
-          })
+          }),
+          client.fetch(`*[_type == "review" && product._ref == $id && approved == true]{rating}`, { id: product._id })
         ]);
         setSilverRate(rate || 0);
         setRealTimeStock(stock);
         setSuggestedProducts(suggested);
+
+        if (reviewsData && reviewsData.length > 0) {
+          const total = reviewsData.reduce((acc: number, item: any) => acc + item.rating, 0);
+          const avg = (total / reviewsData.length).toFixed(1);
+          setAvgRating({ score: avg, count: reviewsData.length });
+        }
       } catch (e) { console.error(e); } finally { setIsCheckingStock(false); }
     };
     fetchData();
@@ -118,11 +147,40 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
         {/* RIGHT: CONTENT */}
         <div className="lg:col-span-5 flex flex-col gap-6 md:gap-8">
-          <header className="space-y-1 md:space-y-2">
+          <header className="space-y-1 md:space-y-2 relative">
             <div className="flex items-center gap-2 text-rose-600 font-bold text-[10px] uppercase tracking-widest">
               <Star size={12} fill="currentColor" /> Premium Silver Collection
             </div>
-            <h1 className="text-3xl md:text-5xl font-serif text-stone-900 leading-tight capitalize">{product.title}</h1>
+            
+            {/* 👇 UPDATED: TITLE & SHARE BUTTON */}
+            <div className="flex justify-between items-start gap-4">
+               <h1 className="text-3xl md:text-5xl font-serif text-stone-900 leading-tight capitalize">{product.title}</h1>
+               <button 
+                onClick={handleShare}
+                className="p-3 rounded-full bg-stone-50 text-stone-600 hover:text-rose-600 hover:bg-rose-50 transition-all border border-stone-100"
+                title="Share Product"
+               >
+                 <Share2 size={20} />
+               </button>
+            </div>
+            
+            {avgRating && (
+              <div className="flex items-center gap-2 mt-2 mb-2">
+                <div className="flex items-center gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      size={14} 
+                      fill={i < Math.round(Number(avgRating.score)) ? "#EAB308" : "none"} 
+                      className={i < Math.round(Number(avgRating.score)) ? "text-yellow-500" : "text-stone-300"}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm font-bold text-stone-900">{avgRating.score}</span>
+                <span className="text-xs text-stone-400">({avgRating.count} Reviews)</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-4 mt-3">
                <div className="text-2xl md:text-4xl font-serif text-stone-900">₹{unitPriceTotal.toLocaleString()}</div>
                <button onClick={() => setShowPriceBreakup(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-rose-600 transition-colors">
@@ -204,7 +262,12 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         </div>
       </div>
 
-      {/* --- SUGGESTED PRODUCTS USING YOUR PRODUCTCARD --- */}
+      {/* --- REVIEWS SECTION --- */}
+      <div className="mt-16 bg-white">
+        <ReviewSection productId={product._id} />
+      </div>
+
+      {/* --- SUGGESTED PRODUCTS --- */}
       {suggestedProducts.length > 0 && (
         <div className="mt-20 pt-10 border-t border-stone-100">
           <div className="flex items-end justify-between mb-8">
@@ -217,10 +280,8 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             </Link>
           </div>
 
-          {/* Grid setup for your cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {suggestedProducts.map((item) => {
-              // Map Sanity image to your Card's expected 'imageUrl' format
               const cardItem = {
                 ...item,
                 slug: item.slug.current,
@@ -238,6 +299,11 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           </div>
         </div>
       )}
+
+      {/* --- REVIEWS LIST DISPLAY --- */}
+      <div className="mt-10">
+        <ReviewList productId={product._id} />
+      </div>
 
       {/* PRICE BREAKUP MODAL */}
       <AnimatePresence>

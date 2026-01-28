@@ -4,7 +4,7 @@ import { client } from "@/sanity/lib/client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import imageUrlBuilder from "@sanity/image-url";
-import { Save, Loader2, Search, AlertCircle, TrendingUp, Settings } from "lucide-react";
+import { Save, Loader2, Search, AlertCircle, TrendingUp, Settings, X } from "lucide-react";
 
 const builder = imageUrlBuilder(client);
 function urlFor(source: any) { return builder.image(source); }
@@ -15,7 +15,6 @@ export default function AdminProducts() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // ⚡ New: Silver Rate State
   const [silverRate, setSilverRate] = useState(0);
   const [rateLoading, setRateLoading] = useState(false);
 
@@ -23,11 +22,9 @@ export default function AdminProducts() {
   useEffect(() => {
     const fetchData = async () => {
         try {
-            // Fetch Rate
             const rateData = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
             setSilverRate(rateData || 0);
 
-            // Fetch Products (Added weight & makingCharges)
             const query = `*[_type == "product"] | order(_createdAt desc) {
                 _id, title, price, stockQuantity, image, category, weight, makingCharges
             }`;
@@ -57,8 +54,8 @@ export default function AdminProducts() {
              body: JSON.stringify({ 
                  productId: product._id, 
                  stock: product.stockQuantity,
-                 weight: product.weight,         // 👈 Updating Weight
-                 makingCharges: product.makingCharges // 👈 Updating Making
+                 weight: product.weight,
+                 makingCharges: product.makingCharges
              }),
          });
          
@@ -72,12 +69,8 @@ export default function AdminProducts() {
   };
 
   // 4. Update Silver Rate (Global)
- // AdminProducts.tsx ke andar
-
-const handleUpdateRate = async () => {
+  const handleUpdateRate = async () => {
     setRateLoading(true);
-    console.log("Sending Rate Update:", silverRate); // Debugging Log
-
     try {
         const response = await fetch("/api/update-rate", {
             method: "POST",
@@ -85,24 +78,19 @@ const handleUpdateRate = async () => {
             body: JSON.stringify({ rate: Number(silverRate) }),
         });
 
-        const data = await response.json();
-
         if (response.ok) {
             alert("✅ Silver Rate Updated Successfully!");
-            window.location.reload(); // 👈 Page reload karega taaki naya rate dikhe
+            window.location.reload();
         } else {
-            console.error("Server Error:", data);
-            alert(`❌ Failed: ${data.message}`);
+            alert(`❌ Failed to update rate`);
         }
     } catch (e) {
-        console.error("Network Error:", e);
-        alert("❌ Network Error. Check Console.");
+        alert("❌ Network Error");
     } finally {
         setRateLoading(false);
     }
-};
+  };
 
-  // Helper: Calculate Live Price for Admin View
   const getLivePrice = (weight: number, making: number) => {
       if(!weight) return 0;
       const silverCost = weight * silverRate;
@@ -113,6 +101,10 @@ const handleUpdateRate = async () => {
   const filteredProducts = products.filter(p => 
       p.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // --- CALCULATE SUMMARY STATS ---
+  const outOfStockCount = products.filter(p => p.stockQuantity === 0).length;
+  const lowStockCount = products.filter(p => p.stockQuantity > 0 && p.stockQuantity <= 5).length;
 
   if (loading) return <div className="flex justify-center items-center h-96"><Loader2 className="animate-spin text-rose-600"/> Loading Admin Panel...</div>;
 
@@ -146,6 +138,25 @@ const handleUpdateRate = async () => {
           </div>
       </div>
 
+      {/* --- NEW: INVENTORY SUMMARY CARDS --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="bg-white border-l-4 border-rose-500 p-5 rounded-xl shadow-sm flex justify-between items-center border border-stone-200">
+              <div>
+                  <p className="text-stone-400 text-xs font-bold uppercase tracking-widest">Out of Stock</p>
+                  <h3 className="text-2xl font-serif font-black text-stone-900">{outOfStockCount} Items</h3>
+              </div>
+              <div className="bg-rose-50 p-3 rounded-full text-rose-600"><X size={20}/></div>
+          </div>
+          
+          <div className="bg-white border-l-4 border-amber-400 p-5 rounded-xl shadow-sm flex justify-between items-center border border-stone-200">
+              <div>
+                  <p className="text-stone-400 text-xs font-bold uppercase tracking-widest">Low Stock Alert</p>
+                  <h3 className="text-2xl font-serif font-black text-stone-900">{lowStockCount} Items</h3>
+              </div>
+              <div className="bg-amber-50 p-3 rounded-full text-amber-600"><AlertCircle size={20}/></div>
+          </div>
+      </div>
+
       {/* --- INVENTORY MANAGEMENT --- */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
           <div className="flex justify-between items-center mb-6">
@@ -165,14 +176,14 @@ const handleUpdateRate = async () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
                <thead className="bg-stone-50 text-stone-500 text-xs uppercase font-bold">
-                  <tr>
+                 <tr>
                      <th className="p-4">Product</th>
                      <th className="p-4 w-24">Weight (g)</th>
                      <th className="p-4 w-24">Making (%)</th>
                      <th className="p-4 w-28">Live Price</th>
                      <th className="p-4 w-24">Stock</th>
                      <th className="p-4 text-center w-16">Action</th>
-                  </tr>
+                 </tr>
                </thead>
                <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
                   {filteredProducts.map((product) => {
@@ -192,7 +203,6 @@ const handleUpdateRate = async () => {
                                </div>
                            </td>
                            
-                           {/* Weight Input */}
                            <td className="p-4">
                                <input 
                                   type="number" value={product.weight || 0} 
@@ -201,7 +211,6 @@ const handleUpdateRate = async () => {
                                />
                            </td>
 
-                           {/* Making Charges Input */}
                            <td className="p-4">
                                <input 
                                   type="number" value={product.makingCharges || 0} 
@@ -210,23 +219,39 @@ const handleUpdateRate = async () => {
                                />
                            </td>
 
-                           {/* Calculated Live Price (Read Only) */}
                            <td className="p-4">
                                <div className="font-bold text-stone-900 bg-stone-100 px-2 py-1 rounded w-fit">
-                                  ₹{livePrice.toLocaleString()}
+                                 ₹{livePrice.toLocaleString()}
                                </div>
                            </td>
 
-                           {/* Stock Input */}
                            <td className="p-4">
-                               <input 
-                                  type="number" value={product.stockQuantity} 
-                                  onChange={(e) => handleChange(product._id, 'stockQuantity', e.target.value)}
-                                  className={`w-full border rounded px-2 py-1 font-bold outline-none ${product.stockQuantity < 5 ? 'border-red-300 text-red-600 bg-red-50' : 'border-stone-200'}`}
-                               />
+                               <div className="flex flex-col gap-1">
+                                   <input 
+                                      type="number" value={product.stockQuantity} 
+                                      onChange={(e) => handleChange(product._id, 'stockQuantity', e.target.value)}
+                                      className={`w-full border rounded px-2 py-1 font-bold outline-none transition-all ${
+                                          product.stockQuantity === 0 
+                                          ? 'border-rose-500 bg-rose-50 text-rose-600' 
+                                          : product.stockQuantity <= 5 
+                                          ? 'border-amber-400 bg-amber-50 text-amber-700' 
+                                          : 'border-stone-200'
+                                      }`}
+                                   />
+                                   {/* VISUAL BADGES */}
+                                   {product.stockQuantity === 0 && (
+                                       <span className="text-[9px] font-black text-rose-600 uppercase tracking-tighter flex items-center gap-0.5 animate-pulse">
+                                           <AlertCircle size={8}/> Out of Stock
+                                       </span>
+                                   )}
+                                   {product.stockQuantity > 0 && product.stockQuantity <= 5 && (
+                                       <span className="text-[9px] font-bold text-amber-600 uppercase tracking-tighter">
+                                           ⚠️ Low Stock
+                                       </span>
+                                   )}
+                               </div>
                            </td>
 
-                           {/* Save Button */}
                            <td className="p-4 text-center">
                                <button 
                                   onClick={() => handleSaveProduct(product)}

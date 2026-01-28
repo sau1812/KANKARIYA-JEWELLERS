@@ -108,7 +108,7 @@ defineField({
 
     defineField({
       name: 'isHotDeal',
-      title: 'Hot Deal 🔥',
+      title: 'best seller 🔥',
       type: 'boolean',
       initialValue: false,
     }),

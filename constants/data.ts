@@ -28,7 +28,7 @@ export const headerData = [
     ],
   },
   { title: "ABOUT US", href: "/about" },
-  { title: "HOT DEAL", href: "/deal" },
+  { title: "best sellerL", href: "/deal" },
 ];
 
 export const productType = [
