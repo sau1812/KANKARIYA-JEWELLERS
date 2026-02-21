@@ -27,17 +27,6 @@ export default defineType({
     }),
 
     defineField({
-      name: "stripeCheckoutSessionId",
-      title: "Stripe Checkout Session ID",
-      type: "string",
-    }),
-    defineField({
-      name: "stripeCustomerId",
-      title: "Stripe Customer ID",
-      type: "string",
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
       name: "clerkUserId",
       title: "Clerk User ID",
       type: "string",
@@ -63,11 +52,16 @@ export default defineType({
     }),
 
     // --- 2. PAYMENT INFO ---
+    // 👇 Naye Razorpay Fields yahan add kiye hain aur Stripe hata diya hai
     defineField({
-      name: "stripePaymentIntentId",
-      title: "Stripe Payment Intent ID",
+      name: "razorpayOrderId",
+      title: "Razorpay Order ID",
       type: "string",
-      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "razorpayPaymentId",
+      title: "Razorpay Payment ID",
+      type: "string",
     }),
     defineField({
       name: "totalPrice",
@@ -175,6 +169,7 @@ export default defineType({
       options: {
         list: [
           { title: "Pending", value: "pending" },
+          { title: "Paid", value: "paid" }, // 👇 "Paid" option add kar diya
           { title: "Processing", value: "processing" },
           { title: "Shipped", value: "shipped" },
           { title: "Delivered", value: "delivered" },

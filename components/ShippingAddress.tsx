@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import { MapPin, Plus, Check, Loader2 } from 'lucide-react'
 import { useUser } from "@clerk/nextjs"; 
 
-// 👇 1. Interface Export taaki Cart page use kar sake
 export interface Address {
   _id?: string;
   name: string;
@@ -17,7 +16,6 @@ export interface Address {
 }
 
 interface ShippingAddressProps {
-  // 👇 Prop ab Pura Object lega
   onAddressSelect: (address: Address) => void; 
 }
 
@@ -48,14 +46,20 @@ export default function ShippingAddress({ onAddressSelect }: ShippingAddressProp
         try {
           const res = await fetch(`/api/get-address?userId=${user.id}`);
           const data = await res.json();
-          if (data.addresses) setAddresses(data.addresses);
+          if (data.addresses && data.addresses.length > 0) {
+            setAddresses(data.addresses);
+            
+            // 👇 NEW: Automatically select the first address on load
+            setSelectedId(data.addresses[0]._id || null);
+            onAddressSelect(data.addresses[0]);
+          }
         } catch (error) {
           console.error("Error loading addresses", error);
         }
       };
       fetchAddresses();
     }
-  }, [isLoaded, isSignedIn, user]);
+  }, [isLoaded, isSignedIn, user]); // Note: We only run this when user loads
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -73,6 +77,11 @@ export default function ShippingAddress({ onAddressSelect }: ShippingAddressProp
       const result = await response.json();
       if (response.ok) {
         setAddresses(prev => [...prev, result.data]);
+        
+        // 👇 NEW: Automatically select the newly created address
+        setSelectedId(result.data._id || null);
+        onAddressSelect(result.data);
+        
         resetForm();
       }
     } catch (error) {
@@ -84,7 +93,7 @@ export default function ShippingAddress({ onAddressSelect }: ShippingAddressProp
 
   const handleSelect = (addr: Address) => {
     setSelectedId(addr._id || null);
-    onAddressSelect(addr); // 👈 Passing Full Object
+    onAddressSelect(addr); 
   };
 
   const resetForm = () => {

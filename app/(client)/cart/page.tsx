@@ -109,7 +109,7 @@ export default function CartPage() {
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!selectedAddress) {
         alert("Please select a shipping address.");
         return;
@@ -122,40 +122,8 @@ export default function CartPage() {
         return;
     }
 
-    setIsProcessing(true);
-    try {
-        const userId = user?.id || "guest_user"; 
-        const response = await fetch("/api/create-order", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                cartItems: cartItems.map(item => ({ 
-                    _id: item._id, 
-                    quantity: item.quantity,
-                    selectedExtras: item.selectedExtras 
-                })), 
-                couponCode: discount > 0 ? couponCode : null, 
-                shippingAddress: selectedAddress,
-                userId: userId, 
-                email: user?.primaryEmailAddress?.emailAddress,
-                totalAmount: total,
-                discount: discount
-            }),
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-            alert(`Order Placed! ID: ${data.orderId}`);
-            clearCart(); 
-            router.push('/my-orders'); 
-        } else {
-            alert(`Failed: ${data.message}`);
-        }
-    } catch (error) {
-        alert("Something went wrong.");
-    } finally {
-        setIsProcessing(false);
-    }
+    // Redirect to Checkout Page for Payment
+    router.push('/checkout'); 
   };
 
   if (!isClient) return null;
@@ -294,12 +262,12 @@ export default function CartPage() {
 
               <button 
                 onClick={handleCheckout} 
-                disabled={!selectedAddress || isProcessing || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))} 
+                disabled={!selectedAddress || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))} 
                 className={`w-full py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all ${
                     (!selectedAddress || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))) ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-100'
                 }`}
               >
-                  {isProcessing ? <Loader2 className="animate-spin"/> : <>Confirm Order <ArrowRight size={20}/></>}
+                  Proceed to Checkout <ArrowRight size={20}/>
               </button>
               {!selectedAddress && <p className="text-[10px] text-center mt-2 text-stone-400">Please select an address to proceed</p>}
             </div>

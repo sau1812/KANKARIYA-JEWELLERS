@@ -11,12 +11,23 @@ import { useCart } from '@/context/CartContext'
 import { client } from '@/sanity/lib/client'
 import imageUrlBuilder from '@sanity/image-url'
 import ShippingAddress from '@/components/ShippingAddress'
-import { Address } from '@/src/types' // Ensure this type exists
+import { Address } from '@/src/types' 
 import { useUser } from "@clerk/nextjs";
-import { calculateSilverPrice } from '@/utils/calculatePrice' // 👈 Consistency with Cart
+import { calculateSilverPrice } from '@/utils/calculatePrice' 
 
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { try { return builder.image(source) } catch { return null } }
+
+// 👇 Razorpay SDK load karne ke liye helper function
+const loadScript = (src: string) => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export default function CheckoutPage() {
   const { cartItems, getCartTotal, clearCart } = useCart();
@@ -82,6 +93,7 @@ export default function CheckoutPage() {
     }
   };
 
+  // 👇 UPDATED RAZORPAY PAYMENT HANDLER
   const handlePayment = async () => {
     if (!selectedAddress) {
       alert("Please select a delivery address.");
@@ -91,33 +103,93 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-        const userId = user?.id || "guest_user";
-        
-        // 👇 CALLING OUR SECURE BACKEND
-        const orderResponse = await fetch("/api/create-order", {
+        // 1. Load Razorpay Script
+        const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+        if (!res) {
+            alert("Razorpay SDK failed to load. Are you online?");
+            setIsProcessing(false);
+            return;
+        }
+
+        // 2. Create Order on your backend
+        const rzpOrderResponse = await fetch("/api/razorpay", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                cartItems: cartItems.map(item => ({ _id: item._id, quantity: item.quantity })), 
-                shippingAddress: selectedAddress,
-                userId: userId,
-                email: user?.primaryEmailAddress?.emailAddress || "guest@kankariya.com",
-                couponCode: discount > 0 ? couponCode : null // 👈 Passing Coupon to Server
-            }),
+            body: JSON.stringify({ amount: total }), 
         });
 
-        const orderData = await orderResponse.json();
-
-        if (orderResponse.ok) {
-            // Simulate Payment Gateway Delay
-            setTimeout(() => {
-                clearCart();
-                router.push(`/success?order_id=${orderData.orderId}`); 
-            }, 1500); 
-        } else {
-            alert(`Order Failed: ${orderData.message}`);
+        if (!rzpOrderResponse.ok) {
+            alert("Payment initialization failed!");
             setIsProcessing(false);
+            return;
         }
+
+        const rzpOrderData = await rzpOrderResponse.json();
+
+        // 3. Open Razorpay Modal
+        const options = {
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
+            amount: rzpOrderData.amount,
+            currency: rzpOrderData.currency,
+            name: "KANKARIYA JEWELLERS",
+            description: "Secure Jewellery Purchase",
+            order_id: rzpOrderData.id,
+            handler: async function (response: any) {
+                // PAYMENT SUCCESSFUL! Now save order to Sanity
+                try {
+                    const userId = user?.id || "guest_user";
+                    const orderResponse = await fetch("/api/create-order", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            cartItems: cartItems.map(item => ({ _id: item._id, quantity: item.quantity })), 
+                            shippingAddress: selectedAddress,
+                            userId: userId,
+                            email: user?.primaryEmailAddress?.emailAddress || "guest@kankariya.com",
+                            couponCode: discount > 0 ? couponCode : null,
+                            paymentId: response.razorpay_payment_id, 
+                            razorpayOrderId: response.razorpay_order_id,
+                            razorpaySignature: response.razorpay_signature,
+                        }),
+                    });
+
+                    const orderData = await orderResponse.json();
+
+                    if (orderResponse.ok) {
+                        clearCart();
+                        router.push(`/success?order_id=${orderData.orderId}`); 
+                    } else {
+                        alert(`Order Failed: ${orderData.message}`);
+                        setIsProcessing(false);
+                    }
+                } catch (error) {
+                    console.error("Order save error:", error);
+                    alert("Payment successful, but order saving failed. Please contact support.");
+                    setIsProcessing(false);
+                }
+            },
+            prefill: {
+                name: user?.fullName || "",
+                email: user?.primaryEmailAddress?.emailAddress || "",
+            },
+            theme: {
+                color: "#E11D48", // matches rose-600
+            },
+            modal: {
+                ondismiss: function() {
+                    setIsProcessing(false); // Reset button if user closes popup
+                }
+            }
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        
+        paymentObject.on('payment.failed', function (response: any) {
+            alert(`Payment Failed: ${response.error.description}`);
+            setIsProcessing(false);
+        });
+
+        paymentObject.open();
 
     } catch (error) {
         console.error("Payment Error:", error);
@@ -165,14 +237,14 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                       <p className="font-bold text-stone-900 flex items-center gap-2">
-                          Instant Pay <span className="bg-stone-200 text-stone-600 text-[10px] px-1.5 py-0.5 rounded border border-stone-300">TEST MODE</span>
+                          Razorpay Secure <span className="bg-stone-200 text-stone-600 text-[10px] px-1.5 py-0.5 rounded border border-stone-300">ONLINE</span>
                       </p>
-                      <p className="text-xs text-stone-500 mt-1">Pay securely via UPI, Card, or Netbanking (Simulated)</p>
+                      <p className="text-xs text-stone-500 mt-1">Pay securely via UPI, Cards, Netbanking</p>
                   </div>
                </label>
 
                <div className="mt-4 flex items-center gap-2 text-xs text-stone-400">
-                   <ShieldCheck size={14} /> Payments are SSL encrypted and secured.
+                   <ShieldCheck size={14} /> Payments are SSL encrypted and secured by Razorpay.
                </div>
             </div>
 

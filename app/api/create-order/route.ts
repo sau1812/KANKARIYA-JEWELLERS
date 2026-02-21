@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { client } from "@/sanity/lib/client";
+import crypto from "crypto"; // 👈 NEW: For Razorpay Signature Verification
 
 interface ExtraOption {
   optionName: string;
@@ -17,10 +18,31 @@ const calculateItemPrice = (weight: number, rate: number, makingCharges: number)
 
 export async function POST(req: Request) {
   try {
-    const { cartItems, shippingAddress, userId, couponCode, email } = await req.json();
+    const { 
+        cartItems, shippingAddress, userId, couponCode, email,
+        paymentId, razorpayOrderId, razorpaySignature // 👈 NEW: Receiving payment details from frontend
+    } = await req.json();
+
+    // 🚨 RAZORPAY SIGNATURE VERIFICATION
+    if (!paymentId || !razorpayOrderId || !razorpaySignature) {
+        return NextResponse.json({ message: "Missing Payment Details" }, { status: 400 });
+    }
+
+    const body = razorpayOrderId + "|" + paymentId;
+    const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(body.toString())
+        .digest("hex");
+
+    if (expectedSignature !== razorpaySignature) {
+        return NextResponse.json({ message: "Invalid Payment Signature. Order Rejected!" }, { status: 400 });
+    }
+    // ✅ VERIFICATION SUCCESSFUL! Now proceed with the order...
 
     const currentSilverRate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
     const productIds = cartItems.map((item: any) => item._id);
+    
+    // NOTE: Make sure your fetch query uses the exact variable names
     const products = await client.fetch(
       `*[_type == "product" && _id in $ids]{
           _id, title, weight, makingCharges, stockQuantity, price, extraOptions
@@ -110,16 +132,16 @@ export async function POST(req: Request) {
         totalPrice: calculatedTotal + shippingCost - discountAmount,
         amountDiscount: discountAmount,
         currency: "INR",
-        status: "pending",
+        status: "paid", // 👈 UPDATED: Status is now paid since Razorpay verified it
         clerkUserId: userId,
-        stripeCustomerId: "manual_order",
-        stripePaymentIntentId: "cod_pending",
+        razorpayPaymentId: paymentId, // 👈 NEW: Replaced stripe keys with Razorpay keys for tracking
+        razorpayOrderId: razorpayOrderId, // 👈 NEW
     };
 
     transaction.create(orderDoc);
 
     // ✅ COMMIT BOTH (Stock Update + Order Creation)
-    const result = await transaction.commit();
+    await transaction.commit();
 
     // Result se order number nikalne ke liye humne wahi number use kiya jo upar generate kiya tha
     return NextResponse.json({ orderId: orderDoc.orderNumber }, { status: 200 });
