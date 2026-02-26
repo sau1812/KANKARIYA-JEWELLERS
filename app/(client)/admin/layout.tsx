@@ -12,16 +12,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
-  // 🆔 Clerk Dashboard se mili ADMIN ID yahan check hogi
-  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID; 
+  // 🆔 Clerk Dashboard se mili ADMIN IDs (Comma separated string ko array me convert kar rahe hain)
+  const ADMIN_IDS_STRING = process.env.NEXT_PUBLIC_ADMIN_USER_IDS || "";
+  const adminIdsArray = ADMIN_IDS_STRING.split(","); 
 
   useEffect(() => {
     if (isLoaded) {
-      if (!user || user.id !== ADMIN_ID) {
-        router.push("/"); // 🚫 Agar Admin nahi hai toh Home page par bhej do
+      // 👇 Ab check hoga ki kya user.id is adminIdsArray list me maujud hai?
+      if (!user || !adminIdsArray.includes(user.id)) {
+        router.push("/"); // 🚫 Agar list me ID nahi hai toh Home page par bhej do
       }
     }
-  }, [isLoaded, user, router, ADMIN_ID]);
+  }, [isLoaded, user, router, adminIdsArray]); // dependencies update ki hain
 
   if (!isLoaded) {
     return (
@@ -31,7 +33,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
   
-  if (!user || user.id !== ADMIN_ID) return null;
+  // 👇 Yahan bhi includes() laga diya
+  if (!user || !adminIdsArray.includes(user.id)) return null;
 
   // 👇 Updated navItems: Dashboard, Best Sellers, aur Manage Products
   const navItems = [

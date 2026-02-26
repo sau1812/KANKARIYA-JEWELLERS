@@ -102,6 +102,7 @@ function ProductCard({ item, silverRate }: ProductProps) {
                     
                     <button 
                         onClick={handleAddToCart}
+                        suppressHydrationWarning={true}
                         disabled={isOutOfStock}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded shadow-lg text-xs font-bold transition-colors
                             ${isOutOfStock 
