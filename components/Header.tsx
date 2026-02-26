@@ -9,13 +9,19 @@ import FavoriteButton from './FavoriteButton';
 import CartIcon from './CartIcon';
 import SignIn from './SignIn';
 import Logo1 from './Logo1';
-import MobileMenu from './MobileMene'; // Make sure file name matches (MobileMene.tsx or MobileMenu.tsx)
+import MobileMenu from './MobileMene'; // Make sure file name matches
 import { LayoutDashboard, ShoppingBag } from 'lucide-react'; 
 import { ClerkLoaded, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 
 const Header = () => {
   const { user } = useUser();
-  const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || "";
+  
+  // 1. Env variable se list fetch karo, split karo, aur array bana lo
+  // Agar env variable nahi hai toh empty array return hoga
+  const adminIds = process.env.NEXT_PUBLIC_ADMIN_USER_IDS?.split(',') || [];
+  
+  // 2. Check karo ki current user ki ID us array me mojood hai ya nahi
+  const isAdmin = user?.id ? adminIds.includes(user.id) : false;
 
   return (
     <header className='sticky top-0 w-full z-50 bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100'>
@@ -72,13 +78,16 @@ const Header = () => {
                                     labelIcon={<ShoppingBag size={15} />}
                                     href="/my-orders"
                                 />
-                                {user?.id === ADMIN_ID && (
+                                
+                                {/* 3. Yahan par condition change kardi hai */}
+                                {isAdmin && (
                                     <UserButton.Link
                                         label="Admin Dashboard"
                                         labelIcon={<LayoutDashboard size={15} />}
                                         href="/admin"
                                     />
                                 )}
+                                
                                 <UserButton.Action label="manageAccount" />
                             </UserButton.MenuItems>
                         </UserButton>

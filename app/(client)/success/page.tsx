@@ -58,7 +58,7 @@ function SuccessContent() {
             </button>
          </Link>
 
-         <Link href="/shop" className="flex-1">
+         <Link href="/" className="flex-1">
             <button className="w-full flex items-center justify-center gap-2 bg-rose-600 text-white py-3.5 rounded-xl font-bold hover:bg-rose-700 transition-all active:scale-95 shadow-lg hover:shadow-rose-200">
                <ShoppingBag size={18} /> Continue Shopping <ArrowRight size={18} />
             </button>

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { 
   CreditCard, Truck, Lock, ChevronRight, CheckCircle, 
-  MapPin, Tag, ShieldCheck, Loader2 
+  MapPin, Tag, ShieldCheck, Loader2, ShoppingBag 
 } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { client } from '@/sanity/lib/client'
@@ -48,13 +48,20 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setIsClient(true);
+    
+    // 👇 1. Check if Cart is Empty (Redirect Logic)
+    if (cartItems.length === 0) {
+        // Optional: User ko wapis Home bhej do agar cart khali hai
+        // router.push('/'); 
+    }
+
     // Fetch Silver Rate for Visual Breakdown
     const fetchRate = async () => {
         const rate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
         setSilverRate(rate || 0);
     };
     fetchRate();
-  }, []);
+  }, [cartItems, router]);
 
   // --- CALCULATIONS (Visual Only - Server Re-calculates) ---
   const cartBreakdown = cartItems.reduce((acc, item) => {
@@ -95,6 +102,13 @@ export default function CheckoutPage() {
 
   // 👇 UPDATED RAZORPAY PAYMENT HANDLER
   const handlePayment = async () => {
+    // 👇 2. Safety Check: Cart Empty nahi honi chahiye
+    if (cartItems.length === 0) {
+        alert("Your cart is empty. Please add products.");
+        router.push('/');
+        return;
+    }
+
     if (!selectedAddress) {
       alert("Please select a delivery address.");
       return;
@@ -199,6 +213,27 @@ export default function CheckoutPage() {
   };
 
   if (!isClient) return null;
+
+  // 👇 3. Block Rendering if Cart is Empty (Show "Empty Cart" UI)
+  if (cartItems.length === 0) {
+    return (
+        <div className="min-h-screen bg-[#F5F5F4] flex flex-col items-center justify-center p-4">
+            <div className="bg-white p-10 rounded-3xl shadow-xl text-center max-w-md w-full border border-stone-100">
+                <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ShoppingBag size={32} className="text-rose-500" />
+                </div>
+                <h2 className="text-2xl font-serif font-bold text-stone-900 mb-2">Your Cart is Empty</h2>
+                <p className="text-stone-500 mb-8">Looks like you haven't added any jewellery to your cart yet.</p>
+                <button 
+                    onClick={() => router.push('/')}
+                    className="w-full bg-stone-900 text-white py-3 rounded-xl font-bold hover:bg-stone-800 transition-all"
+                >
+                    Browse Collection
+                </button>
+            </div>
+        </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F5F4] py-10 px-4">
@@ -333,7 +368,8 @@ export default function CheckoutPage() {
 
                 <button 
                    onClick={handlePayment}
-                   disabled={!selectedAddress || isProcessing}
+                   // 👇 4. Button Disable Logic Updated
+                   disabled={!selectedAddress || isProcessing || cartItems.length === 0}
                    className="w-full bg-rose-600 text-white py-4 rounded-xl font-bold mt-6 hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                    {isProcessing ? (
