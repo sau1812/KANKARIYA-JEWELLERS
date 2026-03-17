@@ -99,7 +99,7 @@ export default function VideoSlider() {
                 transition={{ delay: 0.9, duration: 0.6 }}
               >
                 <Link 
-                  href="/shop" 
+                  href="/deal" 
                   className="bg-transparent border border-white/50 text-white px-10 py-3.5 rounded-full font-semibold text-sm tracking-widest hover:bg-white hover:text-black hover:border-white transition-all duration-500 backdrop-blur-sm"
                 >
                   DISCOVER COLLECTION
