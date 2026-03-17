@@ -7,16 +7,23 @@ import Image from 'next/image'
 import { productType } from '@/constants/data'
 import { motion } from 'framer-motion' 
 import { Clock, TrendingUp } from 'lucide-react' 
+// 👇 NAYA IMPORT ADD KIYA HAI YAHAN
+import { getProductsByCategoryQuery } from '@/sanity/lib/queries'
 
-// --- 1. IMAGE MAPPING HELPER (FIXED IMAGE LINKS) ---
+// --- 1. IMAGE MAPPING HELPER ---
 const getCategoryImage = (val: string) => {
   switch (val.toLowerCase()) {
     case 'ring': return 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=400&auto=format&fit=crop';
-    case 'necklace': return 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop'; // Fixed link
+    case 'necklace': return 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=400&auto=format&fit=crop';
     case 'earring': return 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=400&auto=format&fit=crop';
     case 'bracelet': return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop';
-    case 'bangle': return 'https://images.unsplash.com/photo-1619119069152-a2b331eb392a?q=80&w=400&auto=format&fit=crop'; // Fixed link
+    case 'bangle': return 'https://images.unsplash.com/photo-1619119069152-a2b331eb392a?q=80&w=400&auto=format&fit=crop';
     case 'coins': return 'https://images.unsplash.com/photo-1620766182966-c6eb5ed2b788?q=80&w=400&auto=format&fit=crop';
+    
+    // 👇 NAYE CATEGORIES KI PHOTOS YAHAN ADD KI HAIN
+    case 'chains': return 'https://images.unsplash.com/photo-1599643478514-4a4e0a6d17e5?q=80&w=400&auto=format&fit=crop'; // Example chain image
+    case 'watches': return 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?q=80&w=400&auto=format&fit=crop'; // Example watch image
+    
     default: return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop';
   }
 }
@@ -89,21 +96,11 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
         return; 
       }
       setLoading(true);
-      const query = `*[_type == "product" && category == $category]{
-          _id,
-          title,
-          "slug": slug.current,
-          "imageUrl": image[0].asset->url,
-          category,
-          isHotDeal,
-          stockQuantity,
-          weight,
-          makingCharges,
-          originalPrice
-        }`;
+      
       const params = { category: selectedTab };
       try {
-        const data = await client.fetch(query, params);
+        // 👇 YAHAN SE HARDCODED QUERY HATA KAR IMPORTED QUERY USE KI HAI
+        const data = await client.fetch(getProductsByCategoryQuery, params);
         setProducts(data);
         setCache(prev => ({ ...prev, [selectedTab]: data }));
       } catch (error) {
@@ -168,6 +165,7 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
                             type="button"
                             onClick={() => handleTabClick(cat.value)}
                             className="flex flex-col items-center gap-2 min-w-[80px] group focus:outline-none transition-all active:scale-95"
+                            suppressHydrationWarning
                         >
                             <div className={`
                                 relative w-[70px] h-[70px] md:w-[90px] md:h-[90px] rounded-full p-1 transition-all duration-300

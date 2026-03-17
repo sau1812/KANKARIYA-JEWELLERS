@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Minus, Plus, Star, Info, ChevronDown, CheckCircle2, X, ArrowRight, Share2 // 👈 Share2 add kiya
+  Minus, Plus, Star, Info, ChevronDown, CheckCircle2, X, ArrowRight, Share2 
 } from 'lucide-react'
 import { client } from '@/sanity/lib/client'
 import { useCart } from '@/context/CartContext'
@@ -41,17 +41,24 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const { addToCart } = useCart();
   const router = useRouter();
 
-  const { finalPrice, breakup } = useMemo(() => 
-    calculateSilverPrice(product.weight, silverRate, product.makingCharges),
-    [product.weight, silverRate, product.makingCharges]
-  );
+  // ⚡ DYNAMIC PRICE CALCULATION (Updated with fixed price support)
+  const { finalPrice, breakup } = useMemo(() => {
+    // Agar weight nahi hai (purana product), toh 0 pass karenge error bachane ke liye
+    return calculateSilverPrice(
+      product.weight || 0, 
+      silverRate, 
+      product.makingCharges || 0,
+      product.pricingType, // 👈 Added
+      product.fixedPrice   // 👈 Added
+    );
+  }, [product.weight, silverRate, product.makingCharges, product.pricingType, product.fixedPrice]);
   
   const extrasTotal = selectedExtras.reduce((sum, item) => sum + item.price, 0);
   const unitPriceTotal = finalPrice + extrasTotal;
   const totalPrice = unitPriceTotal * quantity;
   const isOutOfStock = realTimeStock === 0;
 
-  // 👇 NEW: SHARE FUNCTION
+  // SHARE FUNCTION
   const handleShare = async () => {
     const shareData = {
       title: product.title,
@@ -77,7 +84,10 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         const [rate, stock, suggested, reviewsData] = await Promise.all([
           client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
           client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id }),
-          client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]`, { 
+          // Suggested me ab pricingType aur fixedPrice bhi fetch kar rahe hain
+          client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]{
+            _id, title, "slug": slug.current, image, category, isHotDeal, stockQuantity, weight, makingCharges, pricingType, fixedPrice
+          }`, { 
             cat: product.category, 
             id: product._id 
           }),
@@ -152,7 +162,6 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
               <Star size={12} fill="currentColor" /> Premium Silver Collection
             </div>
             
-            {/* 👇 UPDATED: TITLE & SHARE BUTTON */}
             <div className="flex justify-between items-start gap-4">
                <h1 className="text-3xl md:text-5xl font-serif text-stone-900 leading-tight capitalize">{product.title}</h1>
                <button 
@@ -182,10 +191,16 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             )}
 
             <div className="flex items-center gap-4 mt-3">
-               <div className="text-2xl md:text-4xl font-serif text-stone-900">₹{unitPriceTotal.toLocaleString()}</div>
+               <div className="text-2xl md:text-4xl font-serif text-stone-900">₹{unitPriceTotal.toLocaleString('en-IN')}</div>
                <button onClick={() => setShowPriceBreakup(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-rose-600 transition-colors">
                  <Info size={16}/>
                </button>
+               {/* Fixed Rate Badge or Weight Tag */}
+               {product.pricingType === 'fixed' ? (
+                 <span className="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded">Flat Rate</span>
+               ) : (
+                 product.weight > 0 && <span className="text-xs text-stone-500 bg-stone-100 px-2 py-1 rounded">{product.weight}g</span>
+               )}
             </div>
           </header>
 
@@ -228,7 +243,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">Payable</p>
-                  <p className="text-xl md:text-2xl font-serif text-stone-900">₹{totalPrice.toLocaleString()}</p>
+                  <p className="text-xl md:text-2xl font-serif text-stone-900">₹{totalPrice.toLocaleString('en-IN')}</p>
                 </div>
              </div>
 
@@ -282,16 +297,11 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {suggestedProducts.map((item) => {
-              const cardItem = {
-                ...item,
-                slug: item.slug.current,
-                imageUrl: item.image?.[0] ? urlFor(item.image[0]).width(600).url() : null
-              };
-
+              // Yahan sirf zaroori fields hi pass kar rahe hain
               return (
                 <ProductCard 
                   key={item._id} 
-                  item={cardItem} 
+                  item={item} 
                   silverRate={silverRate} 
                 />
               );
@@ -313,12 +323,44 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
               <button onClick={() => setShowPriceBreakup(false)} className="absolute top-4 right-4 p-1 hover:bg-stone-50 rounded-full"><X size={20}/></button>
               <h2 className="text-xl font-serif mb-6 text-stone-900">Price Breakdown</h2>
               <div className="space-y-4 text-sm text-stone-600">
-                <div className="flex justify-between"><span>Silver ({product.weight}g)</span><span>₹{breakup?.silverValue?.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Making Charges</span><span>₹{breakup?.makingCost?.toLocaleString()}</span></div>
+                
+                {/* 👇 MODAL UPDATED: Fixed vs Calculated Logic */}
+                {product.pricingType === 'fixed' ? (
+                  <div className="flex justify-between">
+                    <span>Base Price (Flat Rate)</span>
+                    <span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Silver ({product.weight}g)</span>
+                      <span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Making Charges</span>
+                      <span>₹{breakup?.makingCost?.toLocaleString('en-IN')}</span>
+                    </div>
+                  </>
+                )}
+                
+                {/* GST */}
+                <div className="flex justify-between text-stone-400">
+                  <span>GST (3%)</span>
+                  <span>₹{breakup?.gst?.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* Extras */}
                 {selectedExtras.map((e, i) => (
-                  <div key={i} className="flex justify-between text-rose-600 font-medium"><span>+ {e.optionName}</span><span>₹{e.price.toLocaleString()}</span></div>
+                  <div key={i} className="flex justify-between text-rose-600 font-medium">
+                    <span>+ {e.optionName}</span>
+                    <span>₹{e.price.toLocaleString('en-IN')}</span>
+                  </div>
                 ))}
-                <div className="flex justify-between border-t border-stone-100 pt-4 font-bold text-stone-900"><span>Grand Total</span><span>₹{unitPriceTotal.toLocaleString()}</span></div>
+                
+                <div className="flex justify-between border-t border-stone-100 pt-4 font-bold text-stone-900">
+                  <span>Grand Total</span>
+                  <span>₹{unitPriceTotal.toLocaleString('en-IN')}</span>
+                </div>
               </div>
             </motion.div>
           </div>

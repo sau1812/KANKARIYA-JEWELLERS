@@ -13,6 +13,10 @@ export interface Product {
     weight: number;
     makingCharges: number;
 
+    // 👇 Naye Pricing Fields (In 2 lines se pricingType wali error chali jayegi) 👇
+    pricingType?: 'calculated' | 'fixed'; 
+    fixedPrice?: number;
+
     // Pricing
     price?: number; 
     originalPrice?: number;
@@ -25,7 +29,7 @@ export interface Product {
     isHotDeal?: boolean;
     stockQuantity: number;
 
-    // --- ✨ In 2 lines se error chala jayega ---
+    // Extras
     extraOptions?: ExtraOption[];   // Sanity data ke liye
     selectedExtras?: ExtraOption[]; // Selection store karne ke liye
 }

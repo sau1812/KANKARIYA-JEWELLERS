@@ -1,25 +1,20 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server'; // 👈 Ye import zaroori hai redirect ke liye
+import { NextResponse } from 'next/server';
 
-// 1. Public Routes Define karein (Jo sabke liye khule hain)
-const isPublicRoute = createRouteMatcher([
-  '/', 
-  '/sign-in(.*)', 
-  '/sign-up(.*)',
-  '/shop(.*)',      // Shop page public
-  '/product(.*)',   // Product details public
-  '/success(.*)',   // Success page Public
-  '/api(.*)'        // APIs public
+// 1. Sirf un routes ko define karein jinpe LOGIN compulsory hai
+const isCheckoutRoute = createRouteMatcher([
+  '/checkout(.*)', // 👈 Sirf checkout lock rahega
+  '/orders(.*)',   // (Optional) User ke order history page ke liye
+  '/profile(.*)'   // (Optional) User profile ke liye
 ]);
 
-// 2. Admin Route Define karein 👈 Naya addition
+// 2. Admin Route Define karein
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Auth object se current user ki details nikalein
   const { userId, redirectToSignIn } = await auth();
 
-  // 3. Agar user '/admin' route par ja raha hai 👈 Main logic yahan hai
+  // 3. Agar user '/admin' route par ja raha hai
   if (isAdminRoute(req)) {
     // Agar login hi nahi hai, toh login page par bhejo
     if (!userId) {
@@ -36,10 +31,12 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // 4. Agar route Public NAHI hai aur Admin route bhi NAHI hai (jaise /my-orders), to bas login protect karo
-  if (!isPublicRoute(req) && !isAdminRoute(req)) {
+  // 4. Agar user '/checkout' par ja raha hai, tabhi usko login ke liye roko
+  if (isCheckoutRoute(req)) {
     await auth.protect();
   }
+  
+  // Iske alawa baaki SAARE routes (Home, Shop, Cart, Men's Chains, etc.) apne aap PUBLIC rahenge! 🎉
 });
 
 export const config = {

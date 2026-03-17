@@ -17,6 +17,8 @@ interface Product {
   stockQuantity: number;
   weight: number;
   makingCharges: number;
+  pricingType?: 'calculated' | 'fixed'; // 👈 Naya Field Added
+  fixedPrice?: number;                  // 👈 Naya Field Added
   avgRating?: number; 
 }
 
@@ -34,7 +36,7 @@ export default function UnisexBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Product Query
+        // Product Query (Updated to fetch new fields)
         const productsQuery = `*[_type == "product" && category == "bracelet" && gender == "unisex"]{
           _id,
           title,
@@ -45,7 +47,9 @@ export default function UnisexBracelet() {
           isHotDeal,
           stockQuantity,
           weight,
-          makingCharges
+          makingCharges,
+          pricingType, // 👈 Naya Field Added
+          fixedPrice   // 👈 Naya Field Added
         }`;
 
         // Reviews Query for calculation
@@ -86,8 +90,14 @@ export default function UnisexBracelet() {
   // --- FILTERING LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // Dynamic Price Calculation
-      const basePrice = (product.weight * silverRate) + product.makingCharges;
+      // ⚡ DYNAMIC PRICE CALCULATION (Fixed + Calculated logic added)
+      let basePrice = 0;
+      if (product.pricingType === 'fixed') {
+        basePrice = product.fixedPrice || 0;
+      } else {
+        basePrice = (product.weight * silverRate) + product.makingCharges;
+      }
+      
       const finalPrice = basePrice + (basePrice * 0.03); // Including 3% GST
 
       // Price Filter Match

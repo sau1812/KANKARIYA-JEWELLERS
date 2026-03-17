@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
-import { Filter, Star, ChevronDown } from 'lucide-react'
+import { Filter, ChevronDown } from 'lucide-react'
 
 interface Product {
   _id: string;
@@ -16,7 +16,8 @@ interface Product {
   stockQuantity: number;
   weight: number;
   makingCharges: number;
-  avgRating?: number; 
+  pricingType?: 'calculated' | 'fixed';
+  fixedPrice?: number;
 }
 
 export default function ManBracelet() {
@@ -24,15 +25,15 @@ export default function ManBracelet() {
   const [silverRate, setSilverRate] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Sirf Price Range ka state bacha hai
   const [priceRange, setPriceRange] = useState('All');
-  const [minRating, setMinRating] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Step 1: Fetch basic product data (No complex math here)
+        // Basic product data fetch
         const productsQuery = `*[_type == "product" && category == "bracelet" && (gender == "men" || gender == "unisex")]{
           _id,
           title,
@@ -43,35 +44,19 @@ export default function ManBracelet() {
           isHotDeal,
           stockQuantity,
           weight,
-          makingCharges
+          makingCharges,
+          pricingType,
+          fixedPrice
         }`;
 
-        // Step 2: Fetch all approved reviews to calculate ratings manually
-        const reviewsQuery = `*[_type == "review" && approved == true]{
-          rating,
-          "productId": product._ref
-        }`;
-
-        const [rate, allProducts, allReviews] = await Promise.all([
+        // Ab sirf Rate aur Products fetch kar rahe hain (Reviews hata diya)
+        const [rate, allProducts] = await Promise.all([
           client.fetch(rateQuery),
-          client.fetch(productsQuery),
-          client.fetch(reviewsQuery)
+          client.fetch(productsQuery)
         ]);
 
-        // Step 3: Combine data on client side
-        const productsWithRatings = allProducts.map((product: any) => {
-          const productReviews = allReviews.filter((r: any) => r.productId === product._id);
-          const totalRating = productReviews.reduce((acc: number, curr: any) => acc + curr.rating, 0);
-          const avg = productReviews.length > 0 ? totalRating / productReviews.length : 0;
-          
-          return {
-            ...product,
-            avgRating: Math.round(avg * 10) / 10 // Rounded to 1 decimal
-          };
-        });
-
         setSilverRate(rate || 0);
-        setProducts(productsWithRatings);
+        setProducts(allProducts); // Direct set kar diya bina mapping ke
       } catch (err) {
         console.error("Data fetch error:", err);
       } finally {
@@ -83,20 +68,33 @@ export default function ManBracelet() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const basePrice = (product.weight * silverRate) + product.makingCharges;
-      const finalPrice = basePrice + (basePrice * 0.03); 
+      // ⚡ Price calculation logic
+      let basePrice = 0;
+      
+      if (product.pricingType === 'fixed') {
+        basePrice = product.fixedPrice || 0;
+      } else {
+        basePrice = (product.weight * silverRate) + product.makingCharges;
+      }
+      
+      const finalPrice = basePrice + (basePrice * 0.03); // 3% GST
 
+      // Price Filter logic
       let matchesPrice = true;
       if (priceRange === 'under5k') matchesPrice = finalPrice < 5000;
       else if (priceRange === '5k-10k') matchesPrice = finalPrice >= 5000 && finalPrice <= 10000;
       else if (priceRange === 'above10k') matchesPrice = finalPrice > 10000;
 
-      const matchesRating = (product.avgRating || 0) >= minRating;
-      return matchesPrice && matchesRating;
+      return matchesPrice;
     });
-  }, [products, priceRange, minRating, silverRate]);
+  }, [products, priceRange, silverRate]);
 
-  if (loading) return <div className="h-screen flex items-center justify-center font-serif italic text-stone-400">Loading Men's Collection...</div>;
+  // Handle Loading State
+  if (loading) return (
+     <div className="h-screen flex items-center justify-center font-serif italic text-stone-400">
+         Loading Men's Collection...
+     </div>
+  );
 
   return (
     <div className="bg-stone-50 min-h-screen py-12">
@@ -130,22 +128,9 @@ export default function ManBracelet() {
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
           </div>
 
-          <div className="relative">
-            <select 
-              value={minRating}
-              onChange={(e) => setMinRating(Number(e.target.value))}
-              className="appearance-none bg-white border border-stone-200 px-6 py-2.5 pr-12 rounded-full text-sm font-bold text-stone-700 focus:outline-none focus:border-rose-500 transition-all cursor-pointer shadow-sm"
-            >
-              <option value="0">All Ratings</option>
-              <option value="4">4★ & Above</option>
-              <option value="3">3★ & Above</option>
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
-          </div>
-
-          {(priceRange !== 'All' || minRating !== 0) && (
+          {priceRange !== 'All' && (
             <button 
-              onClick={() => {setPriceRange('All'); setMinRating(0);}}
+              onClick={() => setPriceRange('All')}
               className="text-rose-600 text-xs font-black uppercase tracking-widest hover:underline"
             >
               Reset Filters

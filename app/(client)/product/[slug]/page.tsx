@@ -15,6 +15,8 @@ async function getProduct(slug: string) {
     "slug": slug.current,
     weight,
     makingCharges,
+    pricingType, // 👈 Naya Field: Fixed hai ya Calculated, ye fetch karna zaroori hai
+    fixedPrice,  // 👈 Naya Field: Fixed price ki value fetch karne ke liye
     // 👇 Ye fetch hona sabse zaroori hai add-ons dikhane ke liye
     extraOptions[] {
       optionName,

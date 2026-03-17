@@ -6,11 +6,11 @@ import { Sparkles, ShoppingBag, Eye, Flame, Plus, Check } from 'lucide-react'
 import AddToWishlistButton from './AddToWishlistButton' 
 import { useCart } from '@/context/CartContext'
 import { Product } from '@/src/types' 
-import { calculateSilverPrice } from '@/utils/calculatePrice' // 👈 Import Calculation Logic
+import { calculateSilverPrice } from '@/utils/calculatePrice'
 
 interface ProductProps {
   item: Product; 
-  silverRate: number; // 👈 Naya Prop: Aaj ka Silver Rate parent se aayega
+  silverRate: number; 
 }
 
 function ProductCard({ item, silverRate }: ProductProps) {
@@ -18,7 +18,13 @@ function ProductCard({ item, silverRate }: ProductProps) {
   const [isAdded, setIsAdded] = useState(false);
 
   // ⚡ DYNAMIC PRICE CALCULATION
-  const { finalPrice } = calculateSilverPrice(item.weight, silverRate, item.makingCharges);
+  const { finalPrice } = calculateSilverPrice(
+    item.weight || 0, 
+    silverRate, 
+    item.makingCharges || 0, 
+    item.pricingType, 
+    item.fixedPrice   
+  );
 
   const isOutOfStock = item.stockQuantity === 0;
 
@@ -28,8 +34,6 @@ function ProductCard({ item, silverRate }: ProductProps) {
     
     if (isOutOfStock) return;
     
-    // 🛒 Cart me Calculated Price bhejna zaroori hai
-    // Hum item ki existing properties le rahe hain aur 'price' ko override kar rahe hain
     addToCart({ ...item, price: finalPrice }, 1);
     
     setIsAdded(true);
@@ -69,7 +73,7 @@ function ProductCard({ item, silverRate }: ProductProps) {
 
             {/* --- WISHLIST BUTTON --- */}
             <AddToWishlistButton 
-                product={{...item, price: finalPrice}} // Wishlist me bhi updated price store karein
+                product={{...item, price: finalPrice}} 
                 className="absolute top-2 right-2 z-20" 
             />
 
@@ -81,7 +85,6 @@ function ProductCard({ item, silverRate }: ProductProps) {
                             <Flame size={10} fill="currentColor" /> HOT
                         </span>
                     )}
-                    {/* Sale Badge Hata Diya (No MRP) */}
                 </div>
             )}
 
@@ -139,13 +142,25 @@ function ProductCard({ item, silverRate }: ProductProps) {
             <div className="flex items-center gap-2">
                 {/* 💰 DYNAMIC PRICE DISPLAY */}
                 <span className={`text-base md:text-lg font-bold ${isOutOfStock ? 'text-stone-400' : 'text-stone-900'}`}>
-                    ₹{finalPrice.toLocaleString()} 
+                    ₹{finalPrice.toLocaleString('en-IN')} 
                 </span>
                 
-                {/* Weight Info (Optional but helpful) */}
-                <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
-                    {item.weight}g
-                </span>
+                {/* Weight Info & Flat Rate Badge */}
+                <div className="flex items-center gap-1.5">
+                    {/* Wajan hamesha dikhayenge agar available hai */}
+                    {item.weight > 0 && (
+                        <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+                            {item.weight}g
+                        </span>
+                    )}
+                    
+                    {/* Agar fixed rate hai, toh ek chota sa badge alag se dikhega */}
+                    {item.pricingType === 'fixed' && (
+                        <span className="text-[10px] text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded font-medium">
+                            Flat Rate
+                        </span>
+                    )}
+                </div>
             </div>
              <span className="text-[10px] text-stone-400 uppercase tracking-wider">
                 {item.category}

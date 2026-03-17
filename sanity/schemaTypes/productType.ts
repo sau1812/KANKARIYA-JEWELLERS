@@ -25,13 +25,31 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
 
-    // --- CALCULATION FIELDS (Auto Logic) ---
+    // --- PRICING TYPE SELECTION ---
+    defineField({
+      name: 'pricingType',
+      title: 'Pricing Type',
+      type: 'string',
+      description: 'Product ka rate kaise niklega?',
+      options: {
+        list: [
+          { title: 'Calculated (Weight × Silver Rate + Making)', value: 'calculated' },
+          { title: 'Fixed Price (Flat Rate)', value: 'fixed' }
+        ],
+        layout: 'radio',
+        direction: 'horizontal'
+      },
+      initialValue: 'calculated',
+      validation: (Rule) => Rule.required(),
+    }),
+
+    // --- CALCULATION FIELDS ---
     defineField({
       name: 'weight',
       title: 'Silver Weight (grams)',
       type: 'number',
-      description: 'Product ka wajan dalein.',
-      validation: (Rule) => Rule.required().min(0),
+      description: 'Product ka wajan dalein. (Fixed price me bhi wajan daalna zaroori hai details ke liye)',
+      // 👈 YAHAN SE 'hidden' WALI LINE HATA DI HAI TAARI YE HAMESHA DIKHE
     }),
     
     defineField({
@@ -39,8 +57,19 @@ export default defineType({
       title: 'Making Charges (%)',
       type: 'number',
       description: 'Kitne percent making charge lagana hai? (e.g., Type 15 for 15%)',
-      validation: (Rule) => Rule.required().min(0),
-      initialValue: 10, // Default 10%
+      initialValue: 10,
+      // Yeh sirf calculated items me dikhega kyunki fixed me iska kaam nahi
+      hidden: ({ document }) => document?.pricingType === 'fixed',
+    }),
+
+    // --- FIXED PRICE FIELD ---
+    defineField({
+      name: 'fixedPrice',
+      title: 'Fixed Price (₹)',
+      type: 'number',
+      description: 'Agar product ka rate fix hai, toh yaha daalein (Bina GST ke).',
+      // Yeh field tabhi dikhega jab pricingType 'fixed' hoga
+      hidden: ({ document }) => document?.pricingType !== 'fixed',
     }),
 
     // --- INVENTORY ---
@@ -52,24 +81,23 @@ export default defineType({
       initialValue: 1, 
     }),
 
-    // schemas/product.js ke fields array ke andar add karein:
-
-defineField({
-  name: 'extraOptions',
-  title: 'Extra Add-ons / Customizations',
-  type: 'array',
-  description: 'Add extra things like Diamonds, Engraving, or Special Polish.',
-  of: [
-    {
-      type: 'object',
-      fields: [
-        { name: 'optionName', title: 'Option Name', type: 'string', description: 'e.g., Extra Diamond' },
-        { name: 'price', title: 'Additional Price (₹)', type: 'number', validation: (Rule) => Rule.min(0) },
-        { name: 'description', title: 'Small Note', type: 'string' }
+    // --- EXTRA OPTIONS ---
+    defineField({
+      name: 'extraOptions',
+      title: 'Extra Add-ons / Customizations',
+      type: 'array',
+      description: 'Add extra things like Diamonds, Engraving, or Special Polish.',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'optionName', title: 'Option Name', type: 'string', description: 'e.g., Extra Diamond' },
+            { name: 'price', title: 'Additional Price (₹)', type: 'number', validation: (Rule) => Rule.min(0) },
+            { name: 'description', title: 'Small Note', type: 'string' }
+          ]
+        }
       ]
-    }
-  ]
-}),
+    }),
 
     // --- CATEGORY & DETAILS ---
     defineField({
@@ -84,6 +112,8 @@ defineField({
             { title: 'Bracelet', value: 'bracelet' },
             { title: 'Bangle', value: 'bangle' },
             { title: 'Silver Coins', value: 'coins' },
+            { title: 'Chains', value: 'chains' },
+            { title: 'Watches', value: 'watches' },
         ]
       },
       validation: (Rule) => Rule.required(),
@@ -134,15 +164,25 @@ defineField({
       title: 'title',
       media: 'image',
       weight: 'weight',
-      making: 'makingCharges'
+      making: 'makingCharges',
+      pricingType: 'pricingType',
+      fixedPrice: 'fixedPrice'
     },
     prepare(selection) {
-      const { title, media, weight, making } = selection;
+      const { title, media, weight, making, pricingType, fixedPrice } = selection;
+      
+      let subtitleText = '';
+      if (pricingType === 'fixed') {
+        // 👈 Fixed price wale items me ab wajan bhi dikhega list view me
+        subtitleText = `Fixed: ₹${fixedPrice || 0} | Weight: ${weight || 0}g`;
+      } else {
+        subtitleText = `${weight || 0}g | Making: ${making || 10}%`;
+      }
+
       return {
         title: title,
         media: media && media[0],
-        // Preview me ab weight aur percentage dikhega
-        subtitle: `${weight}g | Making: ${making}%`
+        subtitle: subtitleText
       };
     },
   },

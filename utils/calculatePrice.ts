@@ -1,6 +1,31 @@
 // utils/calculatePrice.ts
 
-export const calculateSilverPrice = (weight: number, rate: number, makingPercentage: number) => {
+export const calculateSilverPrice = (
+  weight: number, 
+  rate: number, 
+  makingPercentage: number, 
+  pricingType: string = 'calculated', // 👈 Naya (Optional)
+  fixedPrice: number = 0              // 👈 Naya (Optional)
+) => {
+  
+  // --- NAYA LOGIC: Agar product Fixed Rate wala hai ---
+  if (pricingType === 'fixed') {
+    if (!fixedPrice) return { finalPrice: 0, breakup: {} };
+
+    const gstAmount = fixedPrice * 0.03;
+    const finalPrice = Math.round(fixedPrice + gstAmount);
+
+    return {
+      finalPrice,
+      breakup: {
+        silverValue: Math.round(fixedPrice), // Frontend error se bachne ke liye fixed price ko hi silverValue me bhej rahe hain
+        makingCost: 0, // Fixed me making charge 0
+        gst: Math.round(gstAmount)
+      }
+    };
+  }
+
+  // --- PURANA LOGIC: (Bina kisi change ke) ---
   // Agar data missing hai to 0 return karein
   if (!weight || !rate) return { finalPrice: 0, breakup: {} };
 

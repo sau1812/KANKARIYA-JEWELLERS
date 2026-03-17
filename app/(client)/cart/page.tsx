@@ -34,7 +34,7 @@ export default function CartPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [stockStatus, setStockStatus] = useState<Record<string, number>>({}); // 👈 New: To track real-time stock
+  const [stockStatus, setStockStatus] = useState<Record<string, number>>({}); 
 
   useEffect(() => {
     setIsClient(true);
@@ -43,7 +43,7 @@ export default function CartPage() {
         const rate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
         setSilverRate(rate || 0);
 
-        // 👈 New: Fetch Real-time Stock for all items in cart
+        // Fetch Real-time Stock for all items in cart
         if (cartItems.length > 0) {
           const ids = cartItems.map(item => item._id);
           const stocks = await client.fetch(`*[_type == "product" && _id in $ids]{_id, stockQuantity}`, { ids });
@@ -55,12 +55,20 @@ export default function CartPage() {
         }
     };
     fetchData();
-  }, [cartItems.length]); // Refresh when item count changes
+  }, [cartItems.length]);
 
-  // --- CALCULATIONS ---
+  // --- CALCULATIONS (UPDATED FOR FIXED PRICE) ---
   const cartBreakdown = useMemo(() => {
     return cartItems.reduce((acc, item) => {
-       const { breakup } = calculateSilverPrice(item.weight, silverRate, item.makingCharges);
+       // 👇 Yahan pricingType aur fixedPrice paas kiya
+       const { breakup } = calculateSilverPrice(
+         item.weight || 0, 
+         silverRate, 
+         item.makingCharges || 0,
+         item.pricingType, 
+         item.fixedPrice
+       );
+       
        const itemExtrasTotal = item.selectedExtras?.reduce((sum, ext) => sum + ext.price, 0) || 0;
 
        acc.silverValue += (breakup.silverValue || 0) * item.quantity;
@@ -94,9 +102,10 @@ export default function CartPage() {
         
         if (coupon) {
             setAppliedCoupon(coupon); 
+            // Discount sirf making cost pe lagega (Fixed items pe making cost 0 hoti hai)
             const discountVal = Math.round(cartBreakdown.makingCost * (coupon.discountPercentage / 100));
             setDiscount(discountVal);
-            setCouponMessage({ type: "success", text: `Coupon Applied! Saved ₹${discountVal} on Making Charges` });
+            setCouponMessage({ type: "success", text: `Coupon Applied! Saved ₹${discountVal.toLocaleString('en-IN')} on Making Charges` });
         } else {
             setAppliedCoupon(null);
             setDiscount(0);
@@ -115,7 +124,6 @@ export default function CartPage() {
         return;
     }
 
-    // 👈 Real-time Stock Validation before processing
     const itemsOutOfStock = cartItems.filter(item => item.quantity > (stockStatus[item._id] || 0));
     if (itemsOutOfStock.length > 0) {
         alert(`Some items in your cart are no longer available in the requested quantity. Please check the alerts.`);
@@ -149,8 +157,15 @@ export default function CartPage() {
           {/* LEFT: ITEMS */}
           <div className="flex-1 flex flex-col gap-4">
             {cartItems.map((item) => {
-                const { breakup } = calculateSilverPrice(item.weight, silverRate, item.makingCharges);
-                const currentAvailableStock = stockStatus[item._id] ?? 99; // 👈 Track stock
+                // 👇 Yahan bhi pricingType aur fixedPrice add kiya
+                const { breakup } = calculateSilverPrice(
+                  item.weight || 0, 
+                  silverRate, 
+                  item.makingCharges || 0,
+                  item.pricingType,
+                  item.fixedPrice
+                );
+                const currentAvailableStock = stockStatus[item._id] ?? 99; 
                 const isInsufficient = item.quantity > currentAvailableStock;
 
                 return (
@@ -170,7 +185,14 @@ export default function CartPage() {
                                     ))}
                                   </div>
                                 )}
-                                {/* 👈 Stock Alert Label */}
+                                
+                                {/* Item Badge */}
+                                {item.pricingType === 'fixed' && (
+                                  <span className="inline-block mt-2 bg-rose-100 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                                    Flat Rate
+                                  </span>
+                                )}
+
                                 {isInsufficient && (
                                   <p className="text-rose-600 text-[10px] font-bold mt-2 flex items-center gap-1">
                                     <AlertCircle size={12}/> Only {currentAvailableStock} units available
@@ -194,13 +216,21 @@ export default function CartPage() {
                         </div>
 
                         <div className="flex items-center justify-end md:col-span-3 mt-4 md:mt-0 gap-2">
-                             <span className="font-bold text-lg text-stone-900">₹{(item.price * item.quantity).toLocaleString()}</span>
+                             <span className="font-bold text-lg text-stone-900">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
                              <button onMouseEnter={() => setActiveTooltip(item._id)} onMouseLeave={() => setActiveTooltip(null)} className="text-stone-300"><Info size={16} /></button>
+                             
+                             {/* 👇 TOOLTIP UPDATED FOR FIXED ITEMS */}
                              {activeTooltip === item._id && (
-                                <div className="absolute bottom-full right-0 mb-2 w-40 bg-stone-900 text-white text-[10px] rounded p-2 z-30">
-                                    <div className="flex justify-between"><span>Silver</span><span>₹{breakup?.silverValue}</span></div>
-                                    <div className="flex justify-between"><span>Making</span><span>₹{breakup?.makingCost}</span></div>
-                                    <div className="flex justify-between text-rose-400 font-bold"><span>GST (3%)</span><span>₹{breakup?.gst}</span></div>
+                                <div className="absolute bottom-full right-0 mb-2 w-40 bg-stone-900 text-white text-[10px] rounded p-2 z-30 shadow-lg">
+                                    {item.pricingType === 'fixed' ? (
+                                      <div className="flex justify-between"><span>Base Price</span><span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span></div>
+                                    ) : (
+                                      <>
+                                        <div className="flex justify-between"><span>Silver</span><span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span></div>
+                                        <div className="flex justify-between"><span>Making</span><span>₹{breakup?.makingCost?.toLocaleString('en-IN')}</span></div>
+                                      </>
+                                    )}
+                                    <div className="flex justify-between text-rose-400 font-bold mt-1 pt-1 border-t border-stone-700"><span>GST (3%)</span><span>₹{breakup?.gst?.toLocaleString('en-IN')}</span></div>
                                 </div>
                              )}
                         </div>
@@ -217,16 +247,22 @@ export default function CartPage() {
             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
               <h2 className="text-xl font-serif mb-6">Summary</h2>
               <div className="space-y-3 text-sm border-b pb-6 mb-6">
-                 <div className="flex justify-between text-stone-500"><span>Silver Value</span><span>₹{cartBreakdown.silverValue.toLocaleString()}</span></div>
-                 <div className="flex justify-between text-stone-500"><span>Making Charges</span><span>+₹{cartBreakdown.makingCost.toLocaleString()}</span></div>
-                 {cartBreakdown.extrasTotal > 0 && <div className="flex justify-between text-rose-600 font-bold"><span>Customizations</span><span>+₹{cartBreakdown.extrasTotal.toLocaleString()}</span></div>}
-                 <div className="flex justify-between text-stone-500"><span>GST (3%)</span><span>+₹{cartBreakdown.gst.toLocaleString()}</span></div>
+                 {/* 👇 "Silver Value" ki jagah "Items Base Value" kar diya */}
+                 <div className="flex justify-between text-stone-500"><span>Items Base Value</span><span>₹{cartBreakdown.silverValue.toLocaleString('en-IN')}</span></div>
+                 
+                 {/* Agar cart me koi making charge wala item hai tabhi making charge ki line dikhegi */}
+                 {cartBreakdown.makingCost > 0 && (
+                   <div className="flex justify-between text-stone-500"><span>Making Charges</span><span>+₹{cartBreakdown.makingCost.toLocaleString('en-IN')}</span></div>
+                 )}
+                 
+                 {cartBreakdown.extrasTotal > 0 && <div className="flex justify-between text-rose-600 font-bold"><span>Customizations</span><span>+₹{cartBreakdown.extrasTotal.toLocaleString('en-IN')}</span></div>}
+                 <div className="flex justify-between text-stone-500"><span>GST (3%)</span><span>+₹{cartBreakdown.gst.toLocaleString('en-IN')}</span></div>
                  
                  {discount > 0 && (
                     <div className="flex flex-col gap-1 bg-green-50 p-2 rounded border border-green-100">
                         <div className="flex justify-between text-green-700 font-bold">
                             <span>Making Discount ({appliedCoupon?.discountPercentage}%)</span>
-                            <span>-₹{discount.toLocaleString()}</span>
+                            <span>-₹{discount.toLocaleString('en-IN')}</span>
                         </div>
                     </div>
                  )}
@@ -235,7 +271,7 @@ export default function CartPage() {
               <div className="space-y-2 mb-6">
                   <div className="flex gap-2">
                      <input 
-                        className="flex-1 px-3 py-2 bg-stone-50 border rounded-lg text-sm" 
+                        className="flex-1 px-3 py-2 bg-stone-50 border rounded-lg text-sm uppercase" 
                         placeholder="COUPON CODE" 
                         value={couponCode} 
                         onChange={(e)=>setCouponCode(e.target.value)} 
@@ -243,13 +279,13 @@ export default function CartPage() {
                      <button 
                         onClick={applyCoupon} 
                         disabled={isApplyingCoupon}
-                        className="bg-stone-900 text-white px-4 rounded-lg text-xs hover:bg-stone-800 transition-colors"
+                        className="bg-stone-900 text-white px-4 rounded-lg text-xs hover:bg-stone-800 transition-colors font-bold tracking-wider"
                      >
                         {isApplyingCoupon ? "..." : "APPLY"}
                      </button>
                   </div>
                   {couponMessage && (
-                      <p className={`text-[11px] ${couponMessage.type === 'success' ? 'text-green-600' : 'text-rose-600'}`}>
+                      <p className={`text-[11px] font-medium ${couponMessage.type === 'success' ? 'text-green-600' : 'text-rose-600'}`}>
                           {couponMessage.text}
                       </p>
                   )}
@@ -257,7 +293,7 @@ export default function CartPage() {
 
               <div className="flex justify-between items-end mb-6">
                   <span className="text-stone-500">Grand Total</span>
-                  <span className="text-2xl font-bold">₹{total.toLocaleString()}</span>
+                  <span className="text-2xl font-bold">₹{total.toLocaleString('en-IN')}</span>
               </div>
 
               <button 

@@ -17,6 +17,8 @@ interface Product {
   stockQuantity: number;
   weight: number;
   makingCharges: number;
+  pricingType?: 'calculated' | 'fixed'; // 👈 Added
+  fixedPrice?: number;                  // 👈 Added
   avgRating?: number; 
 }
 
@@ -34,7 +36,7 @@ export default function WomenNecklace() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Product Query for Necklaces
+        // Product Query for Necklaces (Updated with new fields)
         const productsQuery = `*[_type == "product" && category == "necklace" && gender == "women"]{
           _id,
           title,
@@ -45,7 +47,9 @@ export default function WomenNecklace() {
           isHotDeal,
           stockQuantity,
           weight,
-          makingCharges
+          makingCharges,
+          pricingType, // 👈 Added
+          fixedPrice   // 👈 Added
         }`;
 
         // Reviews Query for rating calculation
@@ -86,8 +90,14 @@ export default function WomenNecklace() {
   // --- FILTERING LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // Dynamic Price Calculation
-      const basePrice = (product.weight * silverRate) + product.makingCharges;
+      // ⚡ DYNAMIC PRICE CALCULATION (Updated for Fixed pricing)
+      let basePrice = 0;
+      if (product.pricingType === 'fixed') {
+        basePrice = product.fixedPrice || 0;
+      } else {
+        basePrice = (product.weight * silverRate) + product.makingCharges;
+      }
+      
       const finalPrice = basePrice + (basePrice * 0.03); // Including 3% GST
 
       // Price Filter
@@ -139,18 +149,7 @@ export default function WomenNecklace() {
           </div>
 
           {/* Rating Selector */}
-          <div className="relative">
-            <select 
-              value={minRating}
-              onChange={(e) => setMinRating(Number(e.target.value))}
-              className="appearance-none bg-white border border-stone-200 px-6 py-2.5 pr-12 rounded-full text-sm font-bold text-stone-700 focus:outline-none focus:border-rose-500 transition-all cursor-pointer shadow-sm"
-            >
-              <option value="0">All Ratings</option>
-              <option value="4">4★ & Above</option>
-              <option value="3">3★ & Above</option>
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
-          </div>
+         
 
           {(priceRange !== 'All' || minRating !== 0) && (
             <button 

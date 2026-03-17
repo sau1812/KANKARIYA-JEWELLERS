@@ -38,8 +38,8 @@ const features = [
   "PURE SILVER (925)", "LIFETIME SHINE", "NICKEL FREE", "CERTIFIED QUALITY", "HANDCRAFTED"
 ];
 
-// --- 3. SERVER COMPONENT (Async hai, isliye 'use client' nahi lagana) ---
-async function HomeBanner() {
+// --- 3. SERVER COMPONENT ---
+export default async function HomeBanner() {
   const sanityData = await getHeroData();
   
   const content = {
@@ -54,6 +54,14 @@ async function HomeBanner() {
   return (
     <section className="relative w-full bg-[#FAFAFA] overflow-hidden">
       
+      {/* --- CUSTOM CSS ANIMATIONS --- */}
+      <style>{`
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+        .animate-fade-in-up { animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+      `}</style>
+
       {/* Background Decorative Elements */}
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-[#C5A25D] opacity-[0.03] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
       <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-[#D61C22] opacity-[0.03] rounded-full blur-3xl translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
@@ -62,9 +70,8 @@ async function HomeBanner() {
         <div className="flex flex-col-reverse md:flex-row items-center gap-10 md:gap-20">
           
           {/* --- LEFT SIDE: Content --- */}
-          <div className="w-full md:w-1/2 text-center md:text-left flex flex-col items-center md:items-start space-y-6 md:space-y-8">
+          <div className="w-full md:w-1/2 text-center md:text-left flex flex-col items-center md:items-start space-y-6 md:space-y-8 animate-fade-in-up">
              
-             {/* New Collection Badge */}
              <div className="flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E5E5] rounded-full shadow-sm">
                 <Star size={12} className="text-[#C5A25D] fill-[#C5A25D]" />
                 <span className="text-[10px] md:text-xs font-bold tracking-widest text-stone-500 uppercase">
@@ -72,7 +79,6 @@ async function HomeBanner() {
                 </span>
              </div>
 
-             {/* Heading */}
              <h1 className="text-4xl md:text-7xl font-serif text-[#1A1A1A] leading-[1.1]">
                 {content.top} <br />
                 <span className="italic text-[#D61C22] font-medium relative">
@@ -105,25 +111,21 @@ async function HomeBanner() {
           </div>
 
           {/* --- RIGHT SIDE: Image --- */}
-          <div className="w-full md:w-1/2 relative flex justify-center md:justify-end">
+          <div className="w-full md:w-1/2 relative flex justify-center md:justify-end animate-fade-in-up">
              
-             <div className="relative w-[320px] h-[400px] md:w-[450px] md:h-[600px]">
+             <div className="relative w-[320px] h-[400px] md:w-[450px] md:h-[600px] animate-float">
                 
                 {/* Border Frame */}
                 <div className="absolute top-4 -right-4 w-full h-full border-2 border-[#C5A25D] rounded-t-[150px] z-0 hidden md:block"></div>
 
                 {/* Main Image Box */}
-                <div className="relative w-full h-full rounded-t-[150px] overflow-hidden shadow-2xl z-10 bg-stone-200">
-                   
-                   {/* Standard img tag */}
+                <div className="relative w-full h-full rounded-t-[150px] overflow-hidden shadow-2xl z-10 bg-stone-200 group">
                    <img 
                       src={content.img1} 
                       alt="Luxury Silver Jewelry" 
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000 ease-out" 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s] ease-out" 
                    />
-                   
                    <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/60 to-transparent"></div>
-                   
                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-lg">
                       <p className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A]">Kankariya Exclusive</p>
                    </div>
@@ -165,5 +167,3 @@ async function HomeBanner() {
     </section>
   )
 }
-
-export default HomeBanner

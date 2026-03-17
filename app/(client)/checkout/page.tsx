@@ -18,7 +18,6 @@ import { calculateSilverPrice } from '@/utils/calculatePrice'
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { try { return builder.image(source) } catch { return null } }
 
-// 👇 Razorpay SDK load karne ke liye helper function
 const loadScript = (src: string) => {
   return new Promise((resolve) => {
     const script = document.createElement("script");
@@ -49,13 +48,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     setIsClient(true);
     
-    // 👇 1. Check if Cart is Empty (Redirect Logic)
+    // Check if Cart is Empty 
     if (cartItems.length === 0) {
-        // Optional: User ko wapis Home bhej do agar cart khali hai
         // router.push('/'); 
     }
 
-    // Fetch Silver Rate for Visual Breakdown
+    // Fetch Silver Rate
     const fetchRate = async () => {
         const rate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
         setSilverRate(rate || 0);
@@ -63,9 +61,17 @@ export default function CheckoutPage() {
     fetchRate();
   }, [cartItems, router]);
 
-  // --- CALCULATIONS (Visual Only - Server Re-calculates) ---
+  // --- CALCULATIONS ---
   const cartBreakdown = cartItems.reduce((acc, item) => {
-     const { breakup } = calculateSilverPrice(item.weight, silverRate, item.makingCharges);
+     // 👇 Yahan naye fields paas kiye
+     const { breakup } = calculateSilverPrice(
+       item.weight || 0, 
+       silverRate, 
+       item.makingCharges || 0,
+       item.pricingType,
+       item.fixedPrice
+     );
+     
      acc.silverValue += (breakup.silverValue || 0) * item.quantity;
      acc.makingCost += (breakup.makingCost || 0) * item.quantity;
      acc.gst += (breakup.gst || 0) * item.quantity;
@@ -86,9 +92,10 @@ export default function CheckoutPage() {
         const coupon = await client.fetch(query, { code: couponCode.toUpperCase() });
         
         if (coupon) {
-            const discountVal = Math.round(subTotal * (coupon.discountPercentage / 100));
+            // Discount sirf Making charges pe lagega
+            const discountVal = Math.round(cartBreakdown.makingCost * (coupon.discountPercentage / 100));
             setDiscount(discountVal);
-            setCouponMessage({ type: "success", text: `Saved ₹${discountVal}` });
+            setCouponMessage({ type: "success", text: `Saved ₹${discountVal.toLocaleString('en-IN')}` });
         } else {
             setDiscount(0);
             setCouponMessage({ type: "error", text: "Invalid Code" });
@@ -100,9 +107,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // 👇 UPDATED RAZORPAY PAYMENT HANDLER
   const handlePayment = async () => {
-    // 👇 2. Safety Check: Cart Empty nahi honi chahiye
     if (cartItems.length === 0) {
         alert("Your cart is empty. Please add products.");
         router.push('/');
@@ -117,7 +122,6 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-        // 1. Load Razorpay Script
         const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
         if (!res) {
             alert("Razorpay SDK failed to load. Are you online?");
@@ -125,7 +129,6 @@ export default function CheckoutPage() {
             return;
         }
 
-        // 2. Create Order on your backend
         const rzpOrderResponse = await fetch("/api/razorpay", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -140,7 +143,6 @@ export default function CheckoutPage() {
 
         const rzpOrderData = await rzpOrderResponse.json();
 
-        // 3. Open Razorpay Modal
         const options = {
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
             amount: rzpOrderData.amount,
@@ -149,7 +151,6 @@ export default function CheckoutPage() {
             description: "Secure Jewellery Purchase",
             order_id: rzpOrderData.id,
             handler: async function (response: any) {
-                // PAYMENT SUCCESSFUL! Now save order to Sanity
                 try {
                     const userId = user?.id || "guest_user";
                     const orderResponse = await fetch("/api/create-order", {
@@ -187,11 +188,11 @@ export default function CheckoutPage() {
                 email: user?.primaryEmailAddress?.emailAddress || "",
             },
             theme: {
-                color: "#E11D48", // matches rose-600
+                color: "#E11D48", 
             },
             modal: {
                 ondismiss: function() {
-                    setIsProcessing(false); // Reset button if user closes popup
+                    setIsProcessing(false); 
                 }
             }
         };
@@ -214,7 +215,6 @@ export default function CheckoutPage() {
 
   if (!isClient) return null;
 
-  // 👇 3. Block Rendering if Cart is Empty (Show "Empty Cart" UI)
   if (cartItems.length === 0) {
     return (
         <div className="min-h-screen bg-[#F5F5F4] flex flex-col items-center justify-center p-4">
@@ -300,8 +300,11 @@ export default function CheckoutPage() {
                          <div className="flex-1">
                             <p className="text-sm font-medium text-stone-900 line-clamp-1 group-hover:text-rose-600 transition-colors">{item.title}</p>
                             <div className="flex justify-between items-center mt-1">
-                                <p className="text-xs text-stone-500">{item.weight}g x {item.quantity}</p>
-                                <p className="text-xs font-bold text-stone-900">₹{item.price.toLocaleString()}</p>
+                                <p className="text-xs text-stone-500">
+                                   {/* 👇 Item ka wajan ya Fixed Rate yahan dikhega */}
+                                   {item.pricingType === 'fixed' ? 'Flat Rate' : `${item.weight}g`} x {item.quantity}
+                                </p>
+                                <p className="text-xs font-bold text-stone-900">₹{item.price.toLocaleString('en-IN')}</p>
                             </div>
                          </div>
                       </div>
@@ -311,21 +314,25 @@ export default function CheckoutPage() {
                 {/* Detailed Breakdown */}
                 <div className="border-t border-stone-100 pt-4 space-y-2 text-sm text-stone-600">
                     <div className="flex justify-between text-xs">
-                       <span>Total Silver Value</span>
-                       <span>₹{cartBreakdown.silverValue.toLocaleString()}</span>
+                       {/* 👇 Label Updated */}
+                       <span>Items Base Value</span>
+                       <span>₹{cartBreakdown.silverValue.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                       <span>Making Charges</span>
-                       <span>+ ₹{cartBreakdown.makingCost.toLocaleString()}</span>
-                    </div>
+                    {/* 👇 Making charge tabhi dikhega jab woh 0 se zyada ho */}
+                    {cartBreakdown.makingCost > 0 && (
+                      <div className="flex justify-between text-xs">
+                         <span>Making Charges</span>
+                         <span>+ ₹{cartBreakdown.makingCost.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs pb-2 border-b border-dashed border-stone-200">
                        <span>GST (3%)</span>
-                       <span>+ ₹{cartBreakdown.gst.toLocaleString()}</span>
+                       <span>+ ₹{cartBreakdown.gst.toLocaleString('en-IN')}</span>
                     </div>
                     
                     <div className="flex justify-between font-medium text-stone-900 pt-1">
                        <span>Subtotal</span>
-                       <span>₹{subTotal.toLocaleString()}</span>
+                       <span>₹{subTotal.toLocaleString('en-IN')}</span>
                     </div>
                     <div className="flex justify-between">
                        <span>Shipping</span>
@@ -334,7 +341,7 @@ export default function CheckoutPage() {
                     {discount > 0 && (
                         <div className="flex justify-between text-green-600 font-bold">
                            <span>Discount</span>
-                           <span>- ₹{discount}</span>
+                           <span>- ₹{discount.toLocaleString('en-IN')}</span>
                         </div>
                     )}
                 </div>
@@ -363,12 +370,11 @@ export default function CheckoutPage() {
                 {/* Grand Total */}
                 <div className="flex justify-between items-center font-bold text-xl text-stone-900 border-t-2 border-stone-100 pt-4 mt-4">
                    <span>Total to Pay</span>
-                   <span>₹{total.toLocaleString()}</span>
+                   <span>₹{total.toLocaleString('en-IN')}</span>
                 </div>
 
                 <button 
                    onClick={handlePayment}
-                   // 👇 4. Button Disable Logic Updated
                    disabled={!selectedAddress || isProcessing || cartItems.length === 0}
                    className="w-full bg-rose-600 text-white py-4 rounded-xl font-bold mt-6 hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >

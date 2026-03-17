@@ -17,6 +17,8 @@ interface Product {
   stockQuantity: number;
   weight: number;
   makingCharges: number;
+  pricingType?: 'calculated' | 'fixed'; // 👈 Naya Field Added
+  fixedPrice?: number;                  // 👈 Naya Field Added
   avgRating?: number; 
 }
 
@@ -34,7 +36,7 @@ export default function WomenBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Product Query for Women & Unisex
+        // Product Query for Women & Unisex (Updated with new fields)
         const productsQuery = `*[_type == "product" && category == "bracelet" && (gender == "women" || gender == "unisex")]{
           _id,
           title,
@@ -45,7 +47,9 @@ export default function WomenBracelet() {
           isHotDeal,
           stockQuantity,
           weight,
-          makingCharges
+          makingCharges,
+          pricingType, // 👈 Added
+          fixedPrice   // 👈 Added
         }`;
 
         // Reviews Query for calculation
@@ -60,7 +64,7 @@ export default function WomenBracelet() {
           client.fetch(reviewsQuery)
         ]);
 
-        // Client Side Data Mapping (Handling average rating manually to avoid GROQ errors)
+        // Client Side Data Mapping
         const productsWithRatings = allProducts.map((product: any) => {
           const productReviews = allReviews.filter((r: any) => r.productId === product._id);
           const totalRating = productReviews.reduce((acc: number, curr: any) => acc + curr.rating, 0);
@@ -86,8 +90,14 @@ export default function WomenBracelet() {
   // --- FILTERING LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // Dynamic Price Calculation (Kankariya Jewellers Standard)
-      const basePrice = (product.weight * silverRate) + product.makingCharges;
+      // ⚡ DYNAMIC PRICE CALCULATION (Handled for Fixed and Calculated pricing)
+      let basePrice = 0;
+      if (product.pricingType === 'fixed') {
+        basePrice = product.fixedPrice || 0;
+      } else {
+        basePrice = (product.weight * silverRate) + product.makingCharges;
+      }
+      
       const finalPrice = basePrice + (basePrice * 0.03); // + 3% GST
 
       // Price Filter
@@ -139,18 +149,7 @@ export default function WomenBracelet() {
           </div>
 
           {/* Rating Selector */}
-          <div className="relative">
-            <select 
-              value={minRating}
-              onChange={(e) => setMinRating(Number(e.target.value))}
-              className="appearance-none bg-white border border-stone-200 px-6 py-2.5 pr-12 rounded-full text-sm font-bold text-stone-700 focus:outline-none focus:border-rose-500 transition-all cursor-pointer shadow-sm"
-            >
-              <option value="0">All Ratings</option>
-              <option value="4">4★ & Above</option>
-              <option value="3">3★ & Above</option>
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
-          </div>
+        
 
           {(priceRange !== 'All' || minRating !== 0) && (
             <button 
