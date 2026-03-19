@@ -42,7 +42,6 @@ function MobileMenu() {
         </button>
       </SheetTrigger>
 
-      {/* 👇 Change yahan kiya hai: onOpenAutoFocus lagaya hai */}
       <SheetContent 
         side="left" 
         className="w-[300px] bg-[#fffcf8] border-r border-stone-100 p-0 flex flex-col z-[60]"
@@ -85,7 +84,8 @@ function MobileMenu() {
                             <div>
                                 <button 
                                     onClick={() => handleToggle(item.title)}
-                                    className="flex items-center justify-between w-full px-6 py-4 text-sm font-medium uppercase tracking-widest text-stone-600 hover:bg-stone-50 hover:text-black transition-colors"
+                                    // 👇 Yahan font-nano lagaya hai
+                                    className="flex items-center justify-between w-full px-6 py-4 font-nano text-[15px] tracking-widest text-stone-600 hover:bg-stone-50 hover:text-black transition-colors"
                                 >
                                     {item.title}
                                     {openItem === item.title ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -95,7 +95,8 @@ function MobileMenu() {
                                         <SheetClose key={subIndex} asChild>
                                             <Link 
                                                 href={subItem.href}
-                                                className="block px-8 py-3 text-xs font-medium uppercase tracking-wide text-stone-500 hover:text-rose-500 transition-colors"
+                                                // 👇 Yahan sub-menu me font-nano lagaya hai
+                                                className="block px-8 py-3 font-nano text-[13px] tracking-wider text-stone-500 hover:text-kankariya-red transition-colors"
                                             >
                                                 {subItem.title}
                                             </Link>
@@ -107,7 +108,8 @@ function MobileMenu() {
                             <SheetClose asChild>
                                 <Link 
                                     href={item.href}
-                                    className="block px-6 py-4 text-sm font-medium uppercase tracking-widest text-stone-600 hover:bg-stone-50 hover:text-black transition-colors"
+                                    // 👇 Yahan main links me font-nano lagaya hai
+                                    className="block px-6 py-4 font-nano text-[15px] tracking-widest text-stone-600 hover:bg-stone-50 hover:text-black transition-colors"
                                 >
                                     {item.title}
                                 </Link>
@@ -129,17 +131,19 @@ function MobileMenu() {
                             <div className="flex items-center gap-4 py-2">
                                 <UserButton afterSignOutUrl="/" userProfileMode="modal" />
                                 <div className="flex flex-col">
+                                    {/* Yahan hum default font hi chhod rahe hain (kyunki ye username wagerah ke liye clear dikhta hai) */}
                                     <span className="text-sm font-bold text-stone-800">My Account</span>
                                     <span className="text-xs text-stone-500">Manage your profile</span>
                                 </div>
                             </div>
                             
                             <SheetClose asChild>
-                                <Link href="/my-orders" className="flex items-center gap-4 text-stone-600 hover:text-rose-500 transition-colors group">
-                                    <div className="p-2 bg-stone-100 rounded-full group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                                <Link href="/my-orders" className="flex items-center gap-4 text-stone-600 hover:text-kankariya-red transition-colors group">
+                                    <div className="p-2 bg-stone-100 rounded-full group-hover:bg-kankariya-red group-hover:text-white transition-colors">
                                         <ShoppingBag size={20} strokeWidth={1.5} />
                                     </div>
-                                    <span className="text-sm font-medium uppercase tracking-wide">My Orders</span>
+                                    {/* 👇 Footer links pe font-nano */}
+                                    <span className="font-nano text-[14px] tracking-widest">My Orders</span>
                                 </Link>
                             </SheetClose>
                         </div>
@@ -153,7 +157,8 @@ function MobileMenu() {
                                     <div className="p-2 bg-stone-100 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
                                         <LogIn size={20} strokeWidth={1.5} />
                                     </div>
-                                    <span className="text-sm font-medium uppercase tracking-wide">Sign In</span>
+                                    {/* 👇 Sign In pe font-nano */}
+                                    <span className="font-nano text-[14px] tracking-widest">Sign In</span>
                                 </button>
                             </SignInButton>
                         </SheetClose>
@@ -162,11 +167,12 @@ function MobileMenu() {
 
                 {/* Wishlist Link */}
                 <SheetClose asChild>
-                    <Link href="/wishlist" className="flex items-center gap-4 text-stone-600 hover:text-rose-500 transition-colors group">
-                        <div className="p-2 bg-stone-100 rounded-full group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                    <Link href="/wishlist" className="flex items-center gap-4 text-stone-600 hover:text-kankariya-red transition-colors group">
+                        <div className="p-2 bg-stone-100 rounded-full group-hover:bg-kankariya-red group-hover:text-white transition-colors">
                             <Heart size={20} strokeWidth={1.5} />
                         </div>
-                        <span className="text-sm font-medium uppercase tracking-wide">Wishlist</span>
+                        {/* 👇 Wishlist pe font-nano */}
+                        <span className="font-nano text-[14px] tracking-widest">Wishlist</span>
                     </Link>
                 </SheetClose>
 
