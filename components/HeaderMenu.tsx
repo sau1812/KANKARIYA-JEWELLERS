@@ -22,10 +22,11 @@ const HeaderMenu = () => {
             {/* --- Main Link --- */}
             <Link 
               href={item.href} 
-              className={`relative flex items-center gap-1.5 text-[13px] uppercase tracking-[0.15em] py-6 transition-all duration-300
+              // 👇 Yahan 'font-nano' add kar diya hai aur size thoda adjust kiya hai
+              className={`relative flex items-center gap-1.5 font-nano text-[15px] tracking-widest py-6 transition-all duration-300
                 ${finalActive 
                   ? "font-bold text-kankariya-red" 
-                  : "font-semibold text-gray-600 hover:text-kankariya-red" 
+                  : "font-medium text-gray-700 hover:text-kankariya-red" 
                 }
               `}
             >
@@ -43,7 +44,7 @@ const HeaderMenu = () => {
               )}
 
               {/* Animated Underline */}
-              <span className={`absolute left-0 bottom-5 h-[2px] bg-kankariya-red transition-all duration-300 ease-out rounded-full
+              <span className={`absolute left-0 bottom-4 h-[2px] bg-kankariya-red transition-all duration-300 ease-out rounded-full
                 ${finalActive ? "w-full" : "w-0 group-hover:w-full"} 
               `}></span>
 
@@ -51,10 +52,10 @@ const HeaderMenu = () => {
 
             {/* --- Dropdown Menu --- */}
             {item.submenu && (
-              // 1. Invisible "Bridge" (pt-6) prevents menu from closing when moving mouse down
+              // Invisible "Bridge"
               <div className="absolute top-full -left-5 pt-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
                 
-                {/* 2. Actual Visual Box */}
+                {/* Actual Visual Box */}
                 <div className="w-60 bg-white/95 backdrop-blur-sm shadow-2xl border-t-[3px] border-kankariya-red rounded-b-md overflow-hidden transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                   
                   <div className="flex flex-col py-3 px-2">
@@ -62,10 +63,10 @@ const HeaderMenu = () => {
                       <Link
                         key={subIndex}
                         href={subItem.href}
-                        className="group/item flex items-center justify-between px-4 py-3 text-[12px] font-medium text-gray-500 hover:text-kankariya-red hover:bg-red-50 rounded-md transition-all duration-200"
+                        // 👇 Dropdown menu mein bhi 'font-nano' laga diya hai
+                        className="group/item flex items-center justify-between px-4 py-3 font-nano text-[13px] font-medium text-gray-600 hover:text-kankariya-red hover:bg-red-50 rounded-md transition-all duration-200"
                       >
-                        {/* Text slides right on hover */}
-                        <span className="uppercase tracking-widest transition-transform duration-300 group-hover/item:translate-x-2">
+                        <span className="tracking-wider transition-transform duration-300 group-hover/item:translate-x-2">
                           {subItem.title}
                         </span>
 

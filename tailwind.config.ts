@@ -9,12 +9,17 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // 👇 NANO FONT YAHAN ADD KIYA HAI
+      fontFamily: {
+        nano: ['var(--font-nano)'], 
+      },
+      // 👆
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
-      // 👇 Animation Code
+      // 👇 Animation Code (Aapka pehle wala)
       keyframes: {
         breathing: {
           '0%, 100%': { transform: 'scale(0.95)', opacity: '0.9' },

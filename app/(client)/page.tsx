@@ -17,13 +17,13 @@ export default async function Home() {
 
   return (
     <div className='bg-shop-light-pink min-h-screen'> 
-      
+       <VideoSlider />
       {/* 👇 1. Top par aapka Sanity Image wala Banner */}
       <HomeBanner />
       
       {/* 👇 2. Banner ke theek niche auto-playing Video Slider */}
       
-      <VideoSlider />
+      
 
 
       {/* 👇 3. Niche Products ka Grid Container ke andar */}
