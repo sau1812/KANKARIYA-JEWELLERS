@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google"; 
-import localFont from "next/font/local"; // 👈 1. Local font import add kiya
+import localFont from "next/font/local";
 import "../globals.css"; 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { ClerkProvider } from '@clerk/nextjs';
 import { CartProvider } from "@/context/CartContext"; 
 import { WishlistProvider } from "@/context/WishlistContext"; 
+import WhatsAppButton from "@/components/WhatsAppButton"; // 👈 1. Button import kiya
 
-// Existing Poppins Font
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-poppins",
 });
 
-// 👇 2. Naya Nano Font Define Kiya
 const nanoFont = localFont({
-  src: "../../public/fonts/nano.ttf", // Dhyan rakhein file ka naam yahi ho
+  src: "../../public/fonts/nano.ttf", 
   variable: "--font-nano",
 });
 
@@ -34,7 +33,6 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
-        {/* 👇 3. nanoFont.variable ko body classes mein add kar diya */}
         <body className={`${poppins.className} ${nanoFont.variable} antialiased text-stone-700 bg-[#fffcf8] overflow-x-hidden`}>
           
           <CartProvider>
@@ -49,6 +47,9 @@ export default function RootLayout({
                 </main>
                 
                 <Footer/>
+
+                {/* 👇 2. WhatsApp Button yahan place kiya taaki har page pe dikhe */}
+                <WhatsAppButton />
                 
               </div>
 

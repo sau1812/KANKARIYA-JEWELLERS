@@ -999,5 +999,36 @@
     "name": "marketingNumber",
     "type": "document",
     "title": "Marketing Subscribers"
+  },
+  {
+    "fields": [
+      {
+        "name": "title",
+        "type": "string",
+        "title": "Project Title"
+      },
+      {
+        "of": [
+          {
+            "options": {
+              "accept": "video/*"
+            },
+            "fields": [
+              {
+                "name": "alt",
+                "type": "string",
+                "title": "Alt Text"
+              }
+            ],
+            "type": "file"
+          }
+        ],
+        "name": "videos",
+        "type": "array",
+        "title": "Slider Videos"
+      }
+    ],
+    "name": "videoSlider",
+    "type": "document"
   }
 ]
