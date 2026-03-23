@@ -2,8 +2,8 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 // 1. Sirf un routes ko define karein jinpe LOGIN compulsory hai
-const isCheckoutRoute = createRouteMatcher([
-  '/checkout(.*)', // 👈 Sirf checkout lock rahega
+const isProtectedRoute = createRouteMatcher([
+  // '/checkout(.*)', 👈 YAHAN SE CHECKOUT HATA DIYA HAI taaki Guest Form chal sake!
   '/orders(.*)',   // (Optional) User ke order history page ke liye
   '/profile(.*)'   // (Optional) User profile ke liye
 ]);
@@ -31,12 +31,12 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // 4. Agar user '/checkout' par ja raha hai, tabhi usko login ke liye roko
-  if (isCheckoutRoute(req)) {
+  // 4. Agar user protected routes (Profile/Orders) par ja raha hai, tabhi roko
+  if (isProtectedRoute(req)) {
     await auth.protect();
   }
   
-  // Iske alawa baaki SAARE routes (Home, Shop, Cart, Men's Chains, etc.) apne aap PUBLIC rahenge! 🎉
+  // Ab tumhara /checkout bhi automatically PUBLIC ban gaya hai! 🎉
 });
 
 export const config = {

@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from "@/components/ui/sheet"
-import { Menu, Search, Heart, ChevronDown, ChevronUp, LogIn, ShoppingBag } from 'lucide-react'
+import { Menu, Search, Heart, ChevronDown, ChevronUp, LogIn, ShoppingBag, Package } from 'lucide-react' // 👈 Package icon add kiya
 import Link from 'next/link'
 import { headerData } from '@/constants/data'
 import Logo1 from './Logo1'
@@ -12,7 +12,6 @@ import { ClerkLoaded, SignedIn, SignedOut, UserButton, SignInButton } from '@cle
 function MobileMenu() {
   const [openItem, setOpenItem] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(""); 
-  
   const [isSheetOpen, setIsSheetOpen] = useState(false); 
 
   const router = useRouter();
@@ -23,7 +22,6 @@ function MobileMenu() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault(); 
-    
     if (searchQuery.trim()) {
       setIsSheetOpen(false); 
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
@@ -84,7 +82,6 @@ function MobileMenu() {
                             <div>
                                 <button 
                                     onClick={() => handleToggle(item.title)}
-                                    // 👇 Yahan font-nano lagaya hai
                                     className="flex items-center justify-between w-full px-6 py-4 font-nano text-[15px] tracking-widest text-stone-600 hover:bg-stone-50 hover:text-black transition-colors"
                                 >
                                     {item.title}
@@ -95,7 +92,6 @@ function MobileMenu() {
                                         <SheetClose key={subIndex} asChild>
                                             <Link 
                                                 href={subItem.href}
-                                                // 👇 Yahan sub-menu me font-nano lagaya hai
                                                 className="block px-8 py-3 font-nano text-[13px] tracking-wider text-stone-500 hover:text-kankariya-red transition-colors"
                                             >
                                                 {subItem.title}
@@ -108,7 +104,6 @@ function MobileMenu() {
                             <SheetClose asChild>
                                 <Link 
                                     href={item.href}
-                                    // 👇 Yahan main links me font-nano lagaya hai
                                     className="block px-6 py-4 font-nano text-[15px] tracking-widest text-stone-600 hover:bg-stone-50 hover:text-black transition-colors"
                                 >
                                     {item.title}
@@ -128,21 +123,20 @@ function MobileMenu() {
                     {/* User Logged In */}
                     <SignedIn>
                         <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4 py-2">
+                            <div className="flex items-center gap-4 py-2 border-b border-stone-100 pb-4">
                                 <UserButton afterSignOutUrl="/" userProfileMode="modal" />
                                 <div className="flex flex-col">
-                                    {/* Yahan hum default font hi chhod rahe hain (kyunki ye username wagerah ke liye clear dikhta hai) */}
                                     <span className="text-sm font-bold text-stone-800">My Account</span>
                                     <span className="text-xs text-stone-500">Manage your profile</span>
                                 </div>
                             </div>
                             
+                            {/* Track Order for Logged In User */}
                             <SheetClose asChild>
                                 <Link href="/my-orders" className="flex items-center gap-4 text-stone-600 hover:text-kankariya-red transition-colors group">
                                     <div className="p-2 bg-stone-100 rounded-full group-hover:bg-kankariya-red group-hover:text-white transition-colors">
-                                        <ShoppingBag size={20} strokeWidth={1.5} />
+                                        <Package size={20} strokeWidth={1.5} />
                                     </div>
-                                    {/* 👇 Footer links pe font-nano */}
                                     <span className="font-nano text-[14px] tracking-widest">My Orders</span>
                                 </Link>
                             </SheetClose>
@@ -151,17 +145,28 @@ function MobileMenu() {
 
                     {/* User Logged Out */}
                     <SignedOut>
-                        <SheetClose asChild>
-                            <SignInButton mode="modal">
-                                <button className="flex items-center gap-4 text-stone-600 hover:text-black transition-colors group w-full text-left">
-                                    <div className="p-2 bg-stone-100 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
-                                        <LogIn size={20} strokeWidth={1.5} />
+                        <div className="flex flex-col gap-4">
+                            <SheetClose asChild>
+                                <SignInButton mode="modal">
+                                    <button className="flex items-center gap-4 text-stone-600 hover:text-black transition-colors group w-full text-left">
+                                        <div className="p-2 bg-stone-100 rounded-full group-hover:bg-black group-hover:text-white transition-colors">
+                                            <LogIn size={20} strokeWidth={1.5} />
+                                        </div>
+                                        <span className="font-nano text-[14px] tracking-widest">Sign In</span>
+                                    </button>
+                                </SignInButton>
+                            </SheetClose>
+
+                            {/* Track Order for Guest User */}
+                            <SheetClose asChild>
+                                <Link href="/my-orders" className="flex items-center gap-4 text-stone-600 hover:text-rose-600 transition-colors group">
+                                    <div className="p-2 bg-stone-100 rounded-full group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                                        <Package size={20} strokeWidth={1.5} />
                                     </div>
-                                    {/* 👇 Sign In pe font-nano */}
-                                    <span className="font-nano text-[14px] tracking-widest">Sign In</span>
-                                </button>
-                            </SignInButton>
-                        </SheetClose>
+                                    <span className="font-nano text-[14px] tracking-widest">Track Order</span>
+                                </Link>
+                            </SheetClose>
+                        </div>
                     </SignedOut>
                 </ClerkLoaded>
 
@@ -171,7 +176,6 @@ function MobileMenu() {
                         <div className="p-2 bg-stone-100 rounded-full group-hover:bg-kankariya-red group-hover:text-white transition-colors">
                             <Heart size={20} strokeWidth={1.5} />
                         </div>
-                        {/* 👇 Wishlist pe font-nano */}
                         <span className="font-nano text-[14px] tracking-widest">Wishlist</span>
                     </Link>
                 </SheetClose>

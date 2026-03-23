@@ -41,22 +41,21 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const { addToCart } = useCart();
   const router = useRouter();
 
-  // ⚡ DYNAMIC PRICE CALCULATION (Updated with fixed price support)
+  // ⚡ DYNAMIC PRICE CALCULATION
   const { finalPrice, breakup } = useMemo(() => {
-    // Agar weight nahi hai (purana product), toh 0 pass karenge error bachane ke liye
     return calculateSilverPrice(
       product.weight || 0, 
       silverRate, 
       product.makingCharges || 0,
-      product.pricingType, // 👈 Added
-      product.fixedPrice   // 👈 Added
+      product.pricingType, 
+      product.fixedPrice   
     );
   }, [product.weight, silverRate, product.makingCharges, product.pricingType, product.fixedPrice]);
   
   const extrasTotal = selectedExtras.reduce((sum, item) => sum + item.price, 0);
   const unitPriceTotal = finalPrice + extrasTotal;
   const totalPrice = unitPriceTotal * quantity;
-  const isOutOfStock = realTimeStock === 0;
+  const isOutOfStock = realTimeStock <= 0;
 
   // SHARE FUNCTION
   const handleShare = async () => {
@@ -65,17 +64,10 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
       text: `Check out this beautiful ${product.title} from Kankariya Jewellers!`,
       url: window.location.href,
     };
-
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Link copied to clipboard!");
-      }
-    } catch (err) {
-      console.error("Error sharing:", err);
-    }
+      if (navigator.share) { await navigator.share(shareData); } 
+      else { await navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
+    } catch (err) { console.error("Error sharing:", err); }
   };
 
   useEffect(() => {
@@ -84,17 +76,13 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         const [rate, stock, suggested, reviewsData] = await Promise.all([
           client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
           client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id }),
-          // Suggested me ab pricingType aur fixedPrice bhi fetch kar rahe hain
           client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]{
             _id, title, "slug": slug.current, image, category, isHotDeal, stockQuantity, weight, makingCharges, pricingType, fixedPrice
-          }`, { 
-            cat: product.category, 
-            id: product._id 
-          }),
+          }`, { cat: product.category, id: product._id }),
           client.fetch(`*[_type == "review" && product._ref == $id && approved == true]{rating}`, { id: product._id })
         ]);
         setSilverRate(rate || 0);
-        setRealTimeStock(stock);
+        setRealTimeStock(stock || 0);
         setSuggestedProducts(suggested);
 
         if (reviewsData && reviewsData.length > 0) {
@@ -115,10 +103,18 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     );
   };
 
+  // --- REUSABLE ADD TO CART LOGIC ---
   const handleAddToCart = () => {
     if (quantity > realTimeStock) return;
     // @ts-ignore
     addToCart({ ...product, price: unitPriceTotal, selectedExtras, imageUrl: selectedImage || "" }, quantity);
+  };
+
+  // --- 👈 BUY NOW LOGIC (Skip Cart) ---
+  const handleBuyNow = () => {
+    if (quantity > realTimeStock) return;
+    handleAddToCart();
+    router.push('/checkout'); // Direct to Payment Popup page
   };
 
   if (isCheckingStock && !silverRate) return <div className="h-[60vh] flex items-center justify-center font-serif italic text-stone-400 animate-pulse">Loading Kankariya Jewellers...</div>;
@@ -134,19 +130,19 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
               <Image src={selectedImage} alt={product.title} fill className="object-cover" priority />
             )}
             <div className="absolute top-4 left-4 flex flex-col gap-2">
-              {product.isHotDeal && <span className="bg-rose-600 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Hot Deal 🔥</span>}
-              {isOutOfStock && <span className="bg-stone-900 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Sold Out</span>}
+              {product.isHotDeal && <span className="bg-rose-600 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter shadow-sm">Hot Deal 🔥</span>}
+              {isOutOfStock && <span className="bg-stone-900 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter shadow-sm">Sold Out</span>}
             </div>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {product.image?.map((img: any, i: number) => {
               const highRes = urlFor(img).width(1200).url();
               return (
                 <button 
                   key={i} 
                   onClick={() => setSelectedImage(highRes)} 
-                  className={`relative w-20 h-20 md:w-24 md:h-24 rounded-xl border-2 transition-all flex-shrink-0 overflow-hidden ${selectedImage === highRes ? 'border-rose-600 shadow-sm' : 'border-stone-100'}`}
+                  className={`relative w-20 h-20 md:w-24 md:h-24 rounded-xl border-2 transition-all flex-shrink-0 overflow-hidden ${selectedImage === highRes ? 'border-rose-600 shadow-sm scale-95' : 'border-stone-100'}`}
                 >
                   <Image src={urlFor(img).width(200).url()} alt="thumb" fill className="object-cover" />
                 </button>
@@ -164,25 +160,14 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             
             <div className="flex justify-between items-start gap-4">
                <h1 className="text-3xl md:text-5xl font-serif text-stone-900 leading-tight capitalize">{product.title}</h1>
-               <button 
-                onClick={handleShare}
-                className="p-3 rounded-full bg-stone-50 text-stone-600 hover:text-rose-600 hover:bg-rose-50 transition-all border border-stone-100"
-                title="Share Product"
-               >
-                 <Share2 size={20} />
-               </button>
+               <button onClick={handleShare} className="p-3 rounded-full bg-stone-50 text-stone-600 hover:text-rose-600 hover:bg-rose-50 transition-all border border-stone-100"><Share2 size={20} /></button>
             </div>
             
             {avgRating && (
-              <div className="flex items-center gap-2 mt-2 mb-2">
+              <div className="flex items-center gap-2 mt-2">
                 <div className="flex items-center gap-0.5">
                   {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      size={14} 
-                      fill={i < Math.round(Number(avgRating.score)) ? "#EAB308" : "none"} 
-                      className={i < Math.round(Number(avgRating.score)) ? "text-yellow-500" : "text-stone-300"}
-                    />
+                    <Star key={i} size={14} fill={i < Math.round(Number(avgRating.score)) ? "#EAB308" : "none"} className={i < Math.round(Number(avgRating.score)) ? "text-yellow-500" : "text-stone-300"} />
                   ))}
                 </div>
                 <span className="text-sm font-bold text-stone-900">{avgRating.score}</span>
@@ -192,14 +177,11 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
             <div className="flex items-center gap-4 mt-3">
                <div className="text-2xl md:text-4xl font-serif text-stone-900">₹{unitPriceTotal.toLocaleString('en-IN')}</div>
-               <button onClick={() => setShowPriceBreakup(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-rose-600 transition-colors">
-                 <Info size={16}/>
-               </button>
-               {/* Fixed Rate Badge or Weight Tag */}
+               <button onClick={() => setShowPriceBreakup(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-rose-600 transition-colors"><Info size={16}/></button>
                {product.pricingType === 'fixed' ? (
-                 <span className="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded">Flat Rate</span>
+                 <span className="text-xs font-bold text-rose-500 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">Flat Rate</span>
                ) : (
-                 product.weight > 0 && <span className="text-xs text-stone-500 bg-stone-100 px-2 py-1 rounded">{product.weight}g</span>
+                 product.weight > 0 && <span className="text-xs text-stone-500 bg-stone-100 px-3 py-1 rounded-full">{product.weight}g</span>
                )}
             </div>
           </header>
@@ -215,7 +197,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                     <button 
                       key={i} 
                       onClick={() => toggleExtra(opt)} 
-                      className={`flex items-center justify-between p-3 md:p-4 rounded-xl border-2 text-left transition-all ${active ? 'border-rose-600 bg-rose-50/50' : 'border-stone-100 bg-white'}`}
+                      className={`flex items-center justify-between p-3 md:p-4 rounded-xl border-2 text-left transition-all ${active ? 'border-rose-600 bg-rose-50/50' : 'border-stone-100 bg-white hover:border-stone-300'}`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${active ? 'bg-rose-600 border-rose-600' : 'border-stone-200'}`}>
@@ -234,40 +216,53 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
             </div>
           )}
 
+          {/* QUANTITY & ACTIONS */}
           <div className="space-y-4 md:space-y-6 pt-4 border-t border-stone-100">
-             <div className="flex items-center justify-between bg-stone-50 p-4 md:p-6 rounded-2xl md:rounded-3xl">
-                <div className="flex items-center gap-3 bg-white border border-stone-200 rounded-xl p-1">
-                  <button onClick={() => setQuantity(q => Math.max(1, q-1))} className="w-8 h-8 flex items-center justify-center"><Minus size={14}/></button>
-                  <span className="w-6 text-center font-bold text-lg">{quantity}</span>
-                  <button onClick={() => setQuantity(q => Math.min(realTimeStock, q+1))} className="w-8 h-8 flex items-center justify-center"><Plus size={14}/></button>
+             <div className="flex items-center justify-between bg-stone-50 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-inner">
+                <div className="flex items-center gap-3 bg-white border border-stone-200 rounded-xl p-1 shadow-sm">
+                  <button onClick={() => setQuantity(q => Math.max(1, q-1))} className="w-10 h-10 flex items-center justify-center hover:bg-stone-50 rounded-lg transition-colors"><Minus size={14}/></button>
+                  <span className="w-8 text-center font-bold text-lg">{quantity}</span>
+                  <button onClick={() => setQuantity(q => Math.min(realTimeStock, q+1))} className="w-10 h-10 flex items-center justify-center hover:bg-stone-50 rounded-lg transition-colors"><Plus size={14}/></button>
                 </div>
                 <div className="text-right">
                   <p className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">Payable</p>
-                  <p className="text-xl md:text-2xl font-serif text-stone-900">₹{totalPrice.toLocaleString('en-IN')}</p>
+                  <p className="text-xl md:text-3xl font-serif text-stone-900 font-black">₹{totalPrice.toLocaleString('en-IN')}</p>
                 </div>
              </div>
 
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button onClick={handleAddToCart} disabled={isOutOfStock} className="h-14 rounded-xl border-2 border-stone-900 font-bold hover:bg-stone-900 hover:text-white transition-all disabled:opacity-30">
+                <button 
+                  onClick={handleAddToCart} 
+                  disabled={isOutOfStock} 
+                  className="h-14 rounded-xl border-2 border-stone-900 font-bold hover:bg-stone-900 hover:text-white transition-all disabled:opacity-30 active:scale-95"
+                >
                   Add to Cart
                 </button>
-                <button onClick={() => { handleAddToCart(); router.push('/cart'); }} disabled={isOutOfStock} className="h-14 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 disabled:opacity-30">
-                  Buy Now
+                {/* 👈 UPDATED BUY NOW BUTTON */}
+                <button 
+                  onClick={handleBuyNow} 
+                  disabled={isOutOfStock} 
+                  className="h-14 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 disabled:opacity-30 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  Buy Now <ArrowRight size={18} />
                 </button>
              </div>
           </div>
 
+          {/* ACCORDION */}
           <div className="space-y-1">
              {['desc', 'ship'].map((tab) => (
                <div key={tab} className="border-b border-stone-100">
-                  <button onClick={() => setOpenAccordion(openAccordion === tab ? null : tab)} className="w-full py-4 flex justify-between items-center text-left font-serif text-stone-800">
+                  <button onClick={() => setOpenAccordion(openAccordion === tab ? null : tab)} className="w-full py-4 flex justify-between items-center text-left font-serif text-stone-800 hover:text-stone-900 transition-colors">
                     {tab === 'desc' ? 'Product Description' : 'Shipping & Returns'}
-                    <ChevronDown size={16} className={`transition-transform ${openAccordion === tab ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={16} className={`transition-transform duration-300 ${openAccordion === tab ? 'rotate-180' : ''}`} />
                   </button>
                   <AnimatePresence>
                     {openAccordion === tab && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                        <p className="pb-4 text-xs md:text-sm text-stone-500 leading-relaxed">{tab === 'desc' ? product.description : "Kankariya Jewellers offers free insured shipping. Items are shipped within 48 hours."}</p>
+                        <p className="pb-4 text-xs md:text-sm text-stone-500 leading-relaxed">
+                          {tab === 'desc' ? product.description : "Kankariya Jewellers offers free insured shipping on all orders above ₹1000. All items are shipped with BIS Hallmarked certification within 48 hours."}
+                        </p>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -277,12 +272,9 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         </div>
       </div>
 
-      {/* --- REVIEWS SECTION --- */}
-      <div className="mt-16 bg-white">
-        <ReviewSection productId={product._id} />
-      </div>
+      {/* --- SECTIONS --- */}
+      <div className="mt-16"><ReviewSection productId={product._id} /></div>
 
-      {/* --- SUGGESTED PRODUCTS --- */}
       {suggestedProducts.length > 0 && (
         <div className="mt-20 pt-10 border-t border-stone-100">
           <div className="flex items-end justify-between mb-8">
@@ -290,77 +282,37 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
               <p className="text-rose-600 font-bold text-[10px] uppercase tracking-[0.2em] mb-2">Recommendation</p>
               <h2 className="text-3xl font-serif text-stone-900">You May Also Like</h2>
             </div>
-            <Link href="/shop" className="text-stone-400 hover:text-rose-600 transition-colors flex items-center gap-2 text-sm font-medium">
-              View All <ArrowRight size={16}/>
-            </Link>
+            <Link href="/shop" className="text-stone-400 hover:text-rose-600 transition-colors flex items-center gap-2 text-sm font-medium">View All <ArrowRight size={16}/></Link>
           </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {suggestedProducts.map((item) => {
-              // Yahan sirf zaroori fields hi pass kar rahe hain
-              return (
-                <ProductCard 
-                  key={item._id} 
-                  item={item} 
-                  silverRate={silverRate} 
-                />
-              );
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {suggestedProducts.map((item) => (<ProductCard key={item._id} item={item} silverRate={silverRate} />))}
           </div>
         </div>
       )}
 
-      {/* --- REVIEWS LIST DISPLAY --- */}
-      <div className="mt-10">
-        <ReviewList productId={product._id} />
-      </div>
+      <div className="mt-10"><ReviewList productId={product._id} /></div>
 
       {/* PRICE BREAKUP MODAL */}
       <AnimatePresence>
         {showPriceBreakup && (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
-              <button onClick={() => setShowPriceBreakup(false)} className="absolute top-4 right-4 p-1 hover:bg-stone-50 rounded-full"><X size={20}/></button>
-              <h2 className="text-xl font-serif mb-6 text-stone-900">Price Breakdown</h2>
-              <div className="space-y-4 text-sm text-stone-600">
-                
-                {/* 👇 MODAL UPDATED: Fixed vs Calculated Logic */}
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl overflow-hidden">
+              <button onClick={() => setShowPriceBreakup(false)} className="absolute top-6 right-6 p-2 hover:bg-stone-50 rounded-full text-stone-400 transition-colors"><X size={20}/></button>
+              <h2 className="text-2xl font-serif mb-6 text-stone-900">Price Breakdown</h2>
+              <div className="space-y-5 text-sm text-stone-600">
                 {product.pricingType === 'fixed' ? (
-                  <div className="flex justify-between">
-                    <span>Base Price (Flat Rate)</span>
-                    <span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span>
-                  </div>
+                  <div className="flex justify-between"><span>Base Price (Flat Rate)</span><span className="font-bold text-stone-900">₹{breakup?.silverValue?.toLocaleString('en-IN')}</span></div>
                 ) : (
                   <>
-                    <div className="flex justify-between">
-                      <span>Silver ({product.weight}g)</span>
-                      <span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Making Charges</span>
-                      <span>₹{breakup?.makingCost?.toLocaleString('en-IN')}</span>
-                    </div>
+                    <div className="flex justify-between"><span>Silver ({product.weight}g)</span><span className="font-bold text-stone-900">₹{breakup?.silverValue?.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between"><span>Making Charges</span><span className="font-bold text-stone-900">₹{breakup?.makingCost?.toLocaleString('en-IN')}</span></div>
                   </>
                 )}
-                
-                {/* GST */}
-                <div className="flex justify-between text-stone-400">
-                  <span>GST (3%)</span>
-                  <span>₹{breakup?.gst?.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Extras */}
+                <div className="flex justify-between text-stone-400 font-medium"><span>GST (3%)</span><span>₹{breakup?.gst?.toLocaleString('en-IN')}</span></div>
                 {selectedExtras.map((e, i) => (
-                  <div key={i} className="flex justify-between text-rose-600 font-medium">
-                    <span>+ {e.optionName}</span>
-                    <span>₹{e.price.toLocaleString('en-IN')}</span>
-                  </div>
+                  <div key={i} className="flex justify-between text-rose-600 font-bold animate-in fade-in slide-in-from-left-2 duration-300"><span>+ {e.optionName}</span><span>₹{e.price.toLocaleString('en-IN')}</span></div>
                 ))}
-                
-                <div className="flex justify-between border-t border-stone-100 pt-4 font-bold text-stone-900">
-                  <span>Grand Total</span>
-                  <span>₹{unitPriceTotal.toLocaleString('en-IN')}</span>
-                </div>
+                <div className="flex justify-between border-t-2 border-stone-900 pt-5 font-black text-xl text-stone-900 tracking-tight"><span>Grand Total</span><span>₹{unitPriceTotal.toLocaleString('en-IN')}</span></div>
               </div>
             </motion.div>
           </div>

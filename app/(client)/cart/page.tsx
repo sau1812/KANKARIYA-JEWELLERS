@@ -5,23 +5,19 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
-  Trash2, ArrowRight, Tag, ShoppingBag, Loader2, Minus, Plus, Info, ShieldCheck, Truck, CheckCircle2, AlertCircle 
-} from 'lucide-react'
+  Trash2, ArrowRight, Tag, ShoppingBag, Minus, Plus, Info, CheckCircle2, AlertCircle, Package 
+} from 'lucide-react' // 👈 Package icon add kiya
 import { useCart } from '@/context/CartContext' 
 import { client } from '@/sanity/lib/client'
 import imageUrlBuilder from '@sanity/image-url'
-import ShippingAddress from '@/components/ShippingAddress' 
-import { Address } from '@/src/types' 
-import { useUser } from "@clerk/nextjs";
 import { calculateSilverPrice } from '@/utils/calculatePrice' 
 
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { try { return builder.image(source) } catch { return null } }
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, getCartTotal } = useCart();
   const router = useRouter();
-  const { user } = useUser();
 
   // --- STATE ---
   const [silverRate, setSilverRate] = useState(0);
@@ -29,21 +25,17 @@ export default function CartPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null); 
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState<{ type: string, text: string } | null>(null);
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [stockStatus, setStockStatus] = useState<Record<string, number>>({}); 
 
   useEffect(() => {
     setIsClient(true);
     const fetchData = async () => {
-        // Fetch Rate
         const rate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
         setSilverRate(rate || 0);
 
-        // Fetch Real-time Stock for all items in cart
         if (cartItems.length > 0) {
           const ids = cartItems.map(item => item._id);
           const stocks = await client.fetch(`*[_type == "product" && _id in $ids]{_id, stockQuantity}`, { ids });
@@ -57,18 +49,12 @@ export default function CartPage() {
     fetchData();
   }, [cartItems.length]);
 
-  // --- CALCULATIONS (UPDATED FOR FIXED PRICE) ---
+  // --- CALCULATIONS ---
   const cartBreakdown = useMemo(() => {
     return cartItems.reduce((acc, item) => {
-       // 👇 Yahan pricingType aur fixedPrice paas kiya
        const { breakup } = calculateSilverPrice(
-         item.weight || 0, 
-         silverRate, 
-         item.makingCharges || 0,
-         item.pricingType, 
-         item.fixedPrice
+         item.weight || 0, silverRate, item.makingCharges || 0, item.pricingType, item.fixedPrice
        );
-       
        const itemExtrasTotal = item.selectedExtras?.reduce((sum, ext) => sum + ext.price, 0) || 0;
 
        acc.silverValue += (breakup.silverValue || 0) * item.quantity;
@@ -90,47 +76,13 @@ export default function CartPage() {
   const shipping = subTotal > 1000 ? 0 : 100; 
   const total = Math.max(0, subTotal + shipping - discount);
 
-  // --- ✅ HANDLERS ---
-  
-  const applyCoupon = async () => {
-    if (!couponCode) return;
-    setIsApplyingCoupon(true);
-    setCouponMessage(null);
-    try {
-        const query = `*[_type == "coupon" && code == $code && isActive == true][0]`;
-        const coupon = await client.fetch(query, { code: couponCode.toUpperCase() });
-        
-        if (coupon) {
-            setAppliedCoupon(coupon); 
-            // Discount sirf making cost pe lagega (Fixed items pe making cost 0 hoti hai)
-            const discountVal = Math.round(cartBreakdown.makingCost * (coupon.discountPercentage / 100));
-            setDiscount(discountVal);
-            setCouponMessage({ type: "success", text: `Coupon Applied! Saved ₹${discountVal.toLocaleString('en-IN')} on Making Charges` });
-        } else {
-            setAppliedCoupon(null);
-            setDiscount(0);
-            setCouponMessage({ type: "error", text: "Invalid or Expired Code" });
-        }
-    } catch (error) {
-        setCouponMessage({ type: "error", text: "Error applying coupon" });
-    } finally {
-        setIsApplyingCoupon(false);
-    }
-  };
-
+  // --- HANDLERS ---
   const handleCheckout = () => {
-    if (!selectedAddress) {
-        alert("Please select a shipping address.");
-        return;
-    }
-
     const itemsOutOfStock = cartItems.filter(item => item.quantity > (stockStatus[item._id] || 0));
     if (itemsOutOfStock.length > 0) {
-        alert(`Some items in your cart are no longer available in the requested quantity. Please check the alerts.`);
+        alert(`Some items are out of stock. Please check the alerts.`);
         return;
     }
-
-    // Redirect to Checkout Page for Payment
     router.push('/checkout'); 
   };
 
@@ -139,11 +91,13 @@ export default function CartPage() {
   if (cartItems.length === 0) {
     return (
        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 bg-stone-50">
-         <div className="bg-white p-6 rounded-full shadow-sm mb-4">
-            <ShoppingBag size={48} className="text-stone-300" />
-         </div>
+         <div className="bg-white p-6 rounded-full shadow-sm mb-4"><ShoppingBag size={48} className="text-stone-300" /></div>
          <h2 className="text-2xl font-serif text-stone-800 mb-2">Your Cart is Empty</h2>
          <Link href="/" className="bg-rose-600 text-white px-8 py-3 rounded-full font-medium">Start Shopping</Link>
+         {/* Empty cart mein bhi track order ka option de dete hain */}
+         <Link href="/my-orders" className="mt-4 text-stone-400 text-sm font-bold flex items-center gap-2 hover:text-stone-600">
+            <Package size={16}/> Track Existing Order
+         </Link>
        </div>
     );
   }
@@ -152,89 +106,39 @@ export default function CartPage() {
     <div className="bg-[#FAFAFA] min-h-screen py-10 px-4">
       <div className="container mx-auto max-w-6xl">
         <h1 className="text-3xl font-serif text-stone-900 mb-8">Shopping Cart</h1>
-        
         <div className="flex flex-col lg:flex-row gap-8">
+          
           {/* LEFT: ITEMS */}
           <div className="flex-1 flex flex-col gap-4">
             {cartItems.map((item) => {
-                // 👇 Yahan bhi pricingType aur fixedPrice add kiya
-                const { breakup } = calculateSilverPrice(
-                  item.weight || 0, 
-                  silverRate, 
-                  item.makingCharges || 0,
-                  item.pricingType,
-                  item.fixedPrice
-                );
+                const { breakup } = calculateSilverPrice(item.weight || 0, silverRate, item.makingCharges || 0, item.pricingType, item.fixedPrice);
                 const currentAvailableStock = stockStatus[item._id] ?? 99; 
                 const isInsufficient = item.quantity > currentAvailableStock;
 
                 return (
-                    <div key={item._id} className={`bg-white p-5 rounded-xl border shadow-sm md:grid md:grid-cols-12 md:items-center relative transition-all ${isInsufficient ? 'border-rose-300 bg-rose-50/30' : 'border-stone-200'}`}>
+                    <div key={item._id} className={`bg-white p-5 rounded-xl border shadow-sm md:grid md:grid-cols-12 md:items-center relative ${isInsufficient ? 'border-rose-300 bg-rose-50/30' : 'border-stone-200'}`}>
                         <div className="flex gap-4 md:col-span-6 items-center">
                             <div className="relative w-20 h-20 bg-stone-100 rounded-lg overflow-hidden border">
                                 {item.imageUrl && <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />}
                             </div>
                             <div>
                                 <h3 className="font-serif text-stone-900 text-lg leading-tight">{item.title}</h3>
-                                {item.selectedExtras && item.selectedExtras.length > 0 && (
-                                  <div className="mt-2 flex flex-wrap gap-1">
-                                    {item.selectedExtras.map((ex, i) => (
-                                      <span key={i} className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold border border-rose-100">
-                                        <CheckCircle2 size={10} className="inline mr-1" /> {ex.optionName}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                
-                                {/* Item Badge */}
-                                {item.pricingType === 'fixed' && (
-                                  <span className="inline-block mt-2 bg-rose-100 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                                    Flat Rate
-                                  </span>
-                                )}
-
-                                {isInsufficient && (
-                                  <p className="text-rose-600 text-[10px] font-bold mt-2 flex items-center gap-1">
-                                    <AlertCircle size={12}/> Only {currentAvailableStock} units available
-                                  </p>
-                                )}
+                                {item.pricingType === 'fixed' && <span className="inline-block mt-2 bg-rose-100 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Flat Rate</span>}
+                                {isInsufficient && <p className="text-rose-600 text-[10px] font-bold mt-2"><AlertCircle size={12} className="inline"/> Only {currentAvailableStock} left</p>}
                             </div>
                         </div>
 
                         <div className="flex items-center justify-center md:col-span-2 mt-4 md:mt-0">
                             <div className="flex items-center bg-stone-50 border rounded-lg h-9">
-                                <button onClick={() => updateQuantity(item._id, item.quantity - 1)} className="px-3 hover:text-rose-600 transition-colors"><Minus size={14}/></button>
+                                <button onClick={() => updateQuantity(item._id, item.quantity - 1)} className="px-3"><Minus size={14}/></button>
                                 <span className="font-bold w-6 text-center">{item.quantity}</span>
-                                <button 
-                                  onClick={() => updateQuantity(item._id, item.quantity + 1)} 
-                                  className={`px-3 transition-colors ${item.quantity >= currentAvailableStock ? 'text-stone-300 cursor-not-allowed' : 'hover:text-rose-600'}`}
-                                  disabled={item.quantity >= currentAvailableStock}
-                                >
-                                  <Plus size={14}/>
-                                </button>
+                                <button onClick={() => updateQuantity(item._id, item.quantity + 1)} disabled={item.quantity >= currentAvailableStock} className="px-3"><Plus size={14}/></button>
                             </div>
                         </div>
 
                         <div className="flex items-center justify-end md:col-span-3 mt-4 md:mt-0 gap-2">
                              <span className="font-bold text-lg text-stone-900">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
-                             <button onMouseEnter={() => setActiveTooltip(item._id)} onMouseLeave={() => setActiveTooltip(null)} className="text-stone-300"><Info size={16} /></button>
-                             
-                             {/* 👇 TOOLTIP UPDATED FOR FIXED ITEMS */}
-                             {activeTooltip === item._id && (
-                                <div className="absolute bottom-full right-0 mb-2 w-40 bg-stone-900 text-white text-[10px] rounded p-2 z-30 shadow-lg">
-                                    {item.pricingType === 'fixed' ? (
-                                      <div className="flex justify-between"><span>Base Price</span><span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span></div>
-                                    ) : (
-                                      <>
-                                        <div className="flex justify-between"><span>Silver</span><span>₹{breakup?.silverValue?.toLocaleString('en-IN')}</span></div>
-                                        <div className="flex justify-between"><span>Making</span><span>₹{breakup?.makingCost?.toLocaleString('en-IN')}</span></div>
-                                      </>
-                                    )}
-                                    <div className="flex justify-between text-rose-400 font-bold mt-1 pt-1 border-t border-stone-700"><span>GST (3%)</span><span>₹{breakup?.gst?.toLocaleString('en-IN')}</span></div>
-                                </div>
-                             )}
                         </div>
-
                         <button onClick={() => removeFromCart(item._id)} className="absolute top-2 right-2 text-stone-300 hover:text-rose-600"><Trash2 size={18} /></button>
                     </div>
                 );
@@ -243,52 +147,13 @@ export default function CartPage() {
 
           {/* RIGHT: SUMMARY */}
           <div className="lg:w-[380px] space-y-6">
-            <ShippingAddress onAddressSelect={(addr) => setSelectedAddress(addr)} />
             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
               <h2 className="text-xl font-serif mb-6">Summary</h2>
               <div className="space-y-3 text-sm border-b pb-6 mb-6">
-                 {/* 👇 "Silver Value" ki jagah "Items Base Value" kar diya */}
                  <div className="flex justify-between text-stone-500"><span>Items Base Value</span><span>₹{cartBreakdown.silverValue.toLocaleString('en-IN')}</span></div>
-                 
-                 {/* Agar cart me koi making charge wala item hai tabhi making charge ki line dikhegi */}
-                 {cartBreakdown.makingCost > 0 && (
-                   <div className="flex justify-between text-stone-500"><span>Making Charges</span><span>+₹{cartBreakdown.makingCost.toLocaleString('en-IN')}</span></div>
-                 )}
-                 
-                 {cartBreakdown.extrasTotal > 0 && <div className="flex justify-between text-rose-600 font-bold"><span>Customizations</span><span>+₹{cartBreakdown.extrasTotal.toLocaleString('en-IN')}</span></div>}
+                 {cartBreakdown.makingCost > 0 && <div className="flex justify-between text-stone-500"><span>Making Charges</span><span>+₹{cartBreakdown.makingCost.toLocaleString('en-IN')}</span></div>}
                  <div className="flex justify-between text-stone-500"><span>GST (3%)</span><span>+₹{cartBreakdown.gst.toLocaleString('en-IN')}</span></div>
-                 
-                 {discount > 0 && (
-                    <div className="flex flex-col gap-1 bg-green-50 p-2 rounded border border-green-100">
-                        <div className="flex justify-between text-green-700 font-bold">
-                            <span>Making Discount ({appliedCoupon?.discountPercentage}%)</span>
-                            <span>-₹{discount.toLocaleString('en-IN')}</span>
-                        </div>
-                    </div>
-                 )}
-              </div>
-              
-              <div className="space-y-2 mb-6">
-                  <div className="flex gap-2">
-                     <input 
-                        className="flex-1 px-3 py-2 bg-stone-50 border rounded-lg text-sm uppercase" 
-                        placeholder="COUPON CODE" 
-                        value={couponCode} 
-                        onChange={(e)=>setCouponCode(e.target.value)} 
-                     />
-                     <button 
-                        onClick={applyCoupon} 
-                        disabled={isApplyingCoupon}
-                        className="bg-stone-900 text-white px-4 rounded-lg text-xs hover:bg-stone-800 transition-colors font-bold tracking-wider"
-                     >
-                        {isApplyingCoupon ? "..." : "APPLY"}
-                     </button>
-                  </div>
-                  {couponMessage && (
-                      <p className={`text-[11px] font-medium ${couponMessage.type === 'success' ? 'text-green-600' : 'text-rose-600'}`}>
-                          {couponMessage.text}
-                      </p>
-                  )}
+                 {discount > 0 && <div className="flex justify-between text-green-700 font-bold"><span>Discount</span><span>-₹{discount.toLocaleString('en-IN')}</span></div>}
               </div>
 
               <div className="flex justify-between items-end mb-6">
@@ -296,16 +161,24 @@ export default function CartPage() {
                   <span className="text-2xl font-bold">₹{total.toLocaleString('en-IN')}</span>
               </div>
 
+              {/* CHECKOUT BUTTON */}
               <button 
                 onClick={handleCheckout} 
-                disabled={!selectedAddress || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))} 
-                className={`w-full py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all ${
-                    (!selectedAddress || cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))) ? 'bg-stone-200 text-stone-400 cursor-not-allowed' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-100'
-                }`}
+                disabled={cartItems.some(item => item.quantity > (stockStatus[item._id] || 0))} 
+                className="w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-2 bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-200 disabled:opacity-50 transition-all active:scale-95"
               >
-                  Proceed to Checkout <ArrowRight size={20}/>
+                  Pay ₹{total.toLocaleString('en-IN')} Now <ArrowRight size={20}/>
               </button>
-              {!selectedAddress && <p className="text-[10px] text-center mt-2 text-stone-400">Please select an address to proceed</p>}
+
+              {/* --- 👈 TRACK ORDER BUTTON ADDED HERE --- */}
+              <div className="mt-4 pt-4 border-t border-stone-100">
+                <Link href="/my-orders">
+                  <button className="w-full py-3 rounded-xl font-bold text-sm flex justify-center items-center gap-2 text-stone-500 hover:text-stone-900 hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all">
+                    <Package size={18}/> Track Your Orders
+                  </button>
+                </Link>
+              </div>
+
             </div>
           </div>
         </div>

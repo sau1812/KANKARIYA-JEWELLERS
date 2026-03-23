@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { client } from "@/sanity/lib/client";
-import crypto from "crypto"; // 👈 NEW: For Razorpay Signature Verification
-
-interface ExtraOption {
-  optionName: string;
-  price: number;
-  description?: string;
-}
+import crypto from "crypto";
 
 const calculateItemPrice = (weight: number, rate: number, makingCharges: number) => {
   const silverValue = weight * rate;
@@ -20,10 +14,10 @@ export async function POST(req: Request) {
   try {
     const { 
         cartItems, shippingAddress, userId, couponCode, email,
-        paymentId, razorpayOrderId, razorpaySignature // 👈 NEW: Receiving payment details from frontend
+        paymentId, razorpayOrderId, razorpaySignature 
     } = await req.json();
 
-    // 🚨 RAZORPAY SIGNATURE VERIFICATION
+    // 1. RAZORPAY SIGNATURE VERIFICATION
     if (!paymentId || !razorpayOrderId || !razorpaySignature) {
         return NextResponse.json({ message: "Missing Payment Details" }, { status: 400 });
     }
@@ -35,53 +29,48 @@ export async function POST(req: Request) {
         .digest("hex");
 
     if (expectedSignature !== razorpaySignature) {
-        return NextResponse.json({ message: "Invalid Payment Signature. Order Rejected!" }, { status: 400 });
+        return NextResponse.json({ message: "Payment Verification Failed!" }, { status: 400 });
     }
-    // ✅ VERIFICATION SUCCESSFUL! Now proceed with the order...
 
+    // 2. FETCH DATA FOR VALIDATION
     const currentSilverRate = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
     const productIds = cartItems.map((item: any) => item._id);
     
-    // NOTE: Make sure your fetch query uses the exact variable names
     const products = await client.fetch(
       `*[_type == "product" && _id in $ids]{
-          _id, title, weight, makingCharges, stockQuantity, price, extraOptions
+          _id, title, weight, makingCharges, stockQuantity, price, pricingType, fixedPrice, extraOptions
       }`,
       { ids: productIds }
     );
 
     let calculatedTotal = 0;
     const finalOrderItems = [];
-    
-    // --- TRANSACTION START (FOR STOCK UPDATE) ---
     const transaction = client.transaction();
 
     for (const cartItem of cartItems) {
         const product = products.find((p: any) => p._id === cartItem._id);
         if (!product) continue;
 
-        // 🚨 STOCK VALIDATION
+        // STOCK VALIDATION
         if (product.stockQuantity < cartItem.quantity) {
           return NextResponse.json({ message: `Insufficient stock for ${product.title}` }, { status: 400 });
         }
 
-        // 📉 DECREASE STOCK LOGIC (Added to transaction)
-        transaction.patch(product._id, (p) => 
-          p.dec({ stockQuantity: cartItem.quantity })
-        );
+        // DECREASE STOCK
+        transaction.patch(product._id, (p) => p.dec({ stockQuantity: cartItem.quantity }));
 
-        let unitPrice = product.weight > 0 
-          ? calculateItemPrice(product.weight, currentSilverRate, product.makingCharges) 
-          : (product.price || 0);
+        // PRICE CALCULATION (Handled Fixed vs Calculated)
+        let unitPrice = product.pricingType === 'fixed' 
+          ? (product.fixedPrice || 0) 
+          : calculateItemPrice(product.weight || 0, currentSilverRate, product.makingCharges || 0);
 
-        let extrasPriceTotal = 0;
+        // EXTRAS VALIDATION
         const validatedExtras: any[] = [];
-
         if (cartItem.selectedExtras && cartItem.selectedExtras.length > 0) {
             cartItem.selectedExtras.forEach((extra: any) => {
                 const validOption = product.extraOptions?.find((o: any) => o.optionName === extra.optionName);
                 if (validOption) {
-                    extrasPriceTotal += validOption.price;
+                    unitPrice += validOption.price;
                     validatedExtras.push({
                         _key: `extra-${Math.random().toString(36).substring(2, 9)}`, 
                         optionName: validOption.optionName,
@@ -92,15 +81,13 @@ export async function POST(req: Request) {
             });
         }
 
-        const totalUnitPrice = unitPrice + extrasPriceTotal;
-        calculatedTotal += (totalUnitPrice * cartItem.quantity);
+        calculatedTotal += (unitPrice * cartItem.quantity);
 
         finalOrderItems.push({
             _key: `item-${product._id}-${Date.now()}`,
             product: { _type: 'reference', _ref: product._id },
             quantity: cartItem.quantity,
-            priceAtPurchase: totalUnitPrice,
-            productName: product.title,
+            priceAtPurchase: unitPrice,
             selectedExtras: validatedExtras
         });
     }
@@ -112,7 +99,7 @@ export async function POST(req: Request) {
         if (coupon) discountAmount = Math.round(calculatedTotal * (coupon.discountPercentage / 100));
     }
 
-    // 📦 CREATE ORDER LOGIC (Added to transaction)
+    // 3. CREATE ORDER DOCUMENT
     const orderDoc = {
         _type: "order",
         orderNumber: `ORD-${Date.now()}`,
@@ -122,28 +109,25 @@ export async function POST(req: Request) {
         phone: shippingAddress.phone,
         shippingAddress: {
             name: shippingAddress.name,
-            address: shippingAddress.streetAddress,
+            address: shippingAddress.street, // 👈 Match with frontend state 'street'
             city: shippingAddress.city,
             state: shippingAddress.state,
-            pinCode: shippingAddress.pinCode,
+            pinCode: shippingAddress.pincode, // 👈 Match with frontend state 'pincode'
             phone: shippingAddress.phone,
         },
         products: finalOrderItems,
         totalPrice: calculatedTotal + shippingCost - discountAmount,
         amountDiscount: discountAmount,
         currency: "INR",
-        status: "paid", // 👈 UPDATED: Status is now paid since Razorpay verified it
+        status: "paid",
         clerkUserId: userId,
-        razorpayPaymentId: paymentId, // 👈 NEW: Replaced stripe keys with Razorpay keys for tracking
-        razorpayOrderId: razorpayOrderId, // 👈 NEW
+        razorpayPaymentId: paymentId,
+        razorpayOrderId: razorpayOrderId,
     };
 
     transaction.create(orderDoc);
-
-    // ✅ COMMIT BOTH (Stock Update + Order Creation)
     await transaction.commit();
 
-    // Result se order number nikalne ke liye humne wahi number use kiya jo upar generate kiya tha
     return NextResponse.json({ orderId: orderDoc.orderNumber }, { status: 200 });
 
   } catch (error) {
