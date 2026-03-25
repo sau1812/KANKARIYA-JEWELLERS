@@ -7,7 +7,6 @@ import Image from 'next/image'
 import { productType } from '@/constants/data'
 import { motion } from 'framer-motion' 
 import { Clock, TrendingUp } from 'lucide-react' 
-// 👇 NAYA IMPORT ADD KIYA HAI YAHAN
 import { getProductsByCategoryQuery } from '@/sanity/lib/queries'
 
 // --- 1. IMAGE MAPPING HELPER ---
@@ -19,11 +18,8 @@ const getCategoryImage = (val: string) => {
     case 'bracelet': return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop';
     case 'bangle': return 'https://images.unsplash.com/photo-1619119069152-a2b331eb392a?q=80&w=400&auto=format&fit=crop';
     case 'coins': return 'https://images.unsplash.com/photo-1620766182966-c6eb5ed2b788?q=80&w=400&auto=format&fit=crop';
-    
-    // 👇 NAYE CATEGORIES KI PHOTOS YAHAN ADD KI HAIN
-    case 'chains': return 'https://images.unsplash.com/photo-1599643478514-4a4e0a6d17e5?q=80&w=400&auto=format&fit=crop'; // Example chain image
-    case 'watches': return 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?q=80&w=400&auto=format&fit=crop'; // Example watch image
-    
+    case 'chains': return 'https://images.unsplash.com/photo-1599643478514-4a4e0a6d17e5?q=80&w=400&auto=format&fit=crop'; 
+    case 'watches': return 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?q=80&w=400&auto=format&fit=crop'; 
     default: return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop';
   }
 }
@@ -46,7 +42,7 @@ interface ProductGridProps {
   products: Product[];
 }
 
-function ProductGrid({ products: initialProducts }: ProductGridProps) {
+export default function ProductGrid({ products: initialProducts }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts || [])
   const [loading, setLoading] = useState(false)
   const [selectedTab, setSelectedTab] = useState('All');
@@ -99,7 +95,6 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
       
       const params = { category: selectedTab };
       try {
-        // 👇 YAHAN SE HARDCODED QUERY HATA KAR IMPORTED QUERY USE KI HAI
         const data = await client.fetch(getProductsByCategoryQuery, params);
         setProducts(data);
         setCache(prev => ({ ...prev, [selectedTab]: data }));
@@ -115,7 +110,10 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
   return (
     <div className="mt-10">
         
-        {silverRate > 0 && (
+        {/* =========================================
+            LIVE SILVER RATE BANNER COMMENTED OUT
+        ========================================= */}
+        {/* {silverRate > 0 && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -154,7 +152,9 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
             </p>
           </motion.div>
         )}
+        */}
 
+        {/* --- CATEGORY TABS --- */}
         <div className="relative w-full mb-10">
             <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide px-2 md:justify-center">
                 {categories.map((cat) => {
@@ -195,6 +195,7 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
             </div>
         </div>
 
+        {/* --- PRODUCT GRID --- */}
         <div className="mt-8 px-4">
             {loading && (
                 <div className="flex justify-center items-center h-40">
@@ -221,5 +222,3 @@ function ProductGrid({ products: initialProducts }: ProductGridProps) {
     </div>
   )
 }
-
-export default ProductGrid

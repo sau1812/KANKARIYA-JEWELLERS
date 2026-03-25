@@ -1,28 +1,29 @@
 export default {
-  name: 'videoSlider',
-  title: 'Video Slider',
+  name: 'imageSlider', // Name update kiya (query me yehi use hoga)
+  title: 'Premium Image Slider',
   type: 'document',
   fields: [
     {
       name: 'title',
-      title: 'Project Title',
+      title: 'Slider Title',
       type: 'string',
     },
     {
-      name: 'videos',
-      title: 'Slider Videos',
+      name: 'images', // Field name 'videos' se 'images' kar diya
+      title: 'Slider Images',
       type: 'array',
       of: [
         {
-          type: 'file',
+          type: 'image', // Type 'file' se 'image' me change kiya
           options: {
-            accept: 'video/*'
+            hotspot: true // Ye UI me cropping/focus point set karne deta hai
           },
           fields: [
             {
               name: 'alt',
-              title: 'Alt Text',
-              type: 'string'
+              title: 'Alt Text (SEO ke liye zaroori)',
+              type: 'string',
+              description: 'Image me kya hai wo describe karein (e.g., "Diamond Necklace by Kankariya Jewellers")'
             }
           ]
         }

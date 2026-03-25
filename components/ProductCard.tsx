@@ -1,12 +1,13 @@
-"use client"
-import React, { useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Sparkles, ShoppingBag, Eye, Flame, Plus, Check } from 'lucide-react'
-import AddToWishlistButton from './AddToWishlistButton' 
-import { useCart } from '@/context/CartContext'
-import { Product } from '@/src/types' 
-import { calculateSilverPrice } from '@/utils/calculatePrice'
+"use client";
+
+import React, { useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ShoppingBag, Eye, Flame, Plus, Check } from 'lucide-react';
+import AddToWishlistButton from './AddToWishlistButton'; 
+import { useCart } from '@/context/CartContext';
+import { Product } from '@/src/types'; 
+import { calculateSilverPrice } from '@/utils/calculatePrice';
 
 interface ProductProps {
   item: Product; 
@@ -28,146 +29,149 @@ function ProductCard({ item, silverRate }: ProductProps) {
 
   const isOutOfStock = item.stockQuantity === 0;
 
+  // --- IMAGE LOGIC ---
+  const primaryImage = item.imageUrl;
+  const secondaryImage = item.images && item.images.length > 1 ? item.images[1] : null;
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault(); 
     e.stopPropagation(); 
-    
     if (isOutOfStock) return;
     
     addToCart({ ...item, price: finalPrice }, 1);
-    
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
   };
 
   return (
-    <div className="group flex flex-col gap-2 bg-white w-full rounded-xl hover:shadow-xl border border-stone-200 transition-all duration-300 pb-2 overflow-hidden relative">
+    <div className="group flex flex-col gap-2 w-full pb-3 relative transition-all duration-500 md:hover:-translate-y-1">
         
         {/* --- IMAGE CONTAINER --- */}
-        <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
+        <div className="relative w-full aspect-[4/5] bg-[#F9F8F6] overflow-hidden rounded-sm border border-gray-100/50">
             
             <Link href={`/product/${item.slug}`} className="block w-full h-full relative">
-                {item.imageUrl ? (
+                {/* Desktop: Hover Reveal | Mobile: Primary Static */}
+                {primaryImage && (
                     <Image 
-                        src={item.imageUrl} 
+                        src={primaryImage} 
                         alt={item.title} 
                         fill
-                        className={`object-cover transition-transform duration-500 ease-in-out group-hover:scale-110 ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className={`object-cover object-center transition-all duration-[1000ms] ease-in-out 
+                          ${secondaryImage ? 'md:group-hover:opacity-0' : 'md:group-hover:scale-110'} 
+                          ${isOutOfStock ? 'opacity-50 grayscale' : 'opacity-100'}`}
+                        priority
+                        sizes="(max-width: 768px) 50vw, 33vw"
                     />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-stone-300">
-                        <ShoppingBag size={24} />
-                    </div>
+                )}
+
+                {/* Secondary Image (Desktop Hover Only) */}
+                {secondaryImage && (
+                    <Image 
+                        src={secondaryImage} 
+                        alt={item.title} 
+                        fill
+                        className="hidden md:block object-cover object-center absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-[1000ms] ease-in-out group-hover:scale-110"
+                        sizes="33vw"
+                    />
                 )}
 
                 {/* 🚫 OUT OF STOCK OVERLAY */}
                 {isOutOfStock && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10 backdrop-blur-[1px]">
-                        <span className="text-white text-xs md:text-sm font-bold tracking-widest uppercase border border-white px-3 py-1 bg-black/20">
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/40 z-10 backdrop-blur-[1px]">
+                        <span className="text-kankariya-charcoal text-[9px] md:text-xs font-sans font-medium tracking-[0.15em] uppercase border border-kankariya-charcoal/10 px-3 py-1 bg-white/90">
                             Sold Out
                         </span>
                     </div>
                 )}
+
+                {/* Dark Gradient Overlay (Desktop Only) */}
+                <div className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
             </Link>
 
-            {/* --- WISHLIST BUTTON --- */}
-            <AddToWishlistButton 
-                product={{...item, price: finalPrice}} 
-                className="absolute top-2 right-2 z-20" 
-            />
+            {/* --- WISHLIST BUTTON (Mobile/Desktop) --- */}
+            <div className="absolute top-2 right-2 md:top-3 md:right-3 z-30">
+              <AddToWishlistButton 
+                  product={{...item, price: finalPrice}} 
+                  className="scale-90 md:scale-100 text-kankariya-charcoal hover:text-kankariya-gold transition-colors" 
+              />
+            </div>
 
             {/* --- BADGES --- */}
-            {!isOutOfStock && (
-                <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-                    {item.isHotDeal && (
-                        <span className="flex items-center gap-1 bg-orange-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm w-fit backdrop-blur-[2px]">
-                            <Flame size={10} fill="currentColor" /> HOT
-                        </span>
-                    )}
+            {!isOutOfStock && item.isHotDeal && (
+                <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20">
+                    <span className="flex items-center gap-1 bg-kankariya-charcoal text-white text-[8px] md:text-[9px] font-sans tracking-[0.1em] uppercase px-1.5 py-0.5 md:px-2 md:py-1 shadow-sm">
+                        <Flame size={10} fill="currentColor" strokeWidth={1} /> Best
+                    </span>
                 </div>
             )}
 
-            {/* --- MOBILE ADD TO CART --- */}
+            {/* --- MOBILE QUICK ADD (Floating Plus Button) --- */}
             {!isOutOfStock && (
-                <button 
-                    onClick={handleAddToCart}
-                    className={`md:hidden absolute bottom-2 right-2 flex items-center justify-center w-9 h-9 rounded-full shadow-lg active:scale-90 transition-all z-20
-                        ${isAdded ? 'bg-green-600 text-white' : 'bg-white text-black'}`}
-                >
-                    {isAdded ? <Check size={18} strokeWidth={2.5} /> : <Plus size={18} strokeWidth={2.5} />}
-                </button>
+              <button 
+                onClick={handleAddToCart}
+                className={`md:hidden absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center z-30 shadow-lg active:scale-90 transition-all border
+                  ${isAdded ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-200 text-kankariya-charcoal'}`}
+              >
+                {isAdded ? <Check size={14} strokeWidth={2.5} /> : <Plus size={16} strokeWidth={2.5} />}
+              </button>
             )}
 
-            {/* --- DESKTOP HOVER OVERLAY --- */}
-            <div className="hidden md:flex absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 items-end justify-center p-4 z-10 pointer-events-none">
-                 <div className="flex gap-2 w-full translate-y-4 group-hover:translate-y-0 transition-transform duration-300 pointer-events-auto">
-                    
+            {/* --- DESKTOP QUICK ACTIONS --- */}
+            <div className="hidden md:flex absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 items-end justify-center p-4 z-20 pointer-events-none">
+                 <div className="flex gap-2 w-full translate-y-4 group-hover:translate-y-0 transition-all duration-500 ease-out pointer-events-auto">
                     <button 
                         onClick={handleAddToCart}
-                        suppressHydrationWarning={true}
                         disabled={isOutOfStock}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded shadow-lg text-xs font-bold transition-colors
-                            ${isOutOfStock 
-                                ? 'bg-stone-300 text-stone-500 cursor-not-allowed' 
-                                : isAdded 
-                                    ? 'bg-green-600 text-white hover:bg-green-700'
-                                    : 'bg-white text-stone-900 hover:bg-stone-50'
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 text-[10px] font-sans tracking-[0.2em] uppercase font-bold transition-all border
+                            ${isAdded 
+                                ? 'bg-green-600 text-white border-green-600'
+                                : 'bg-white text-kankariya-charcoal border-white hover:bg-kankariya-gold hover:text-white hover:border-kankariya-gold shadow-2xl'
                             }`}
                     >
-                        {isOutOfStock 
-                            ? 'OUT OF STOCK' 
-                            : isAdded 
-                                ? <><Check size={16} /> ADDED</>
-                                : 'ADD TO CART'
-                        }
+                        {isAdded ? <><Check size={14} strokeWidth={2} /> Added</> : 'Add to Bag'}
                     </button>
 
                     <Link 
                         href={`/product/${item.slug}`}
-                        className="flex items-center justify-center w-10 h-10 bg-white text-stone-900 rounded shadow-lg hover:text-rose-600"
+                        className="flex items-center justify-center w-12 h-12 bg-white text-kankariya-charcoal border border-white hover:text-kankariya-gold shadow-2xl transition-all"
                     >
-                        <Eye size={18} />
+                        <Eye size={18} strokeWidth={1.5} />
                     </Link>
                  </div>
             </div>
         </div>
 
         {/* --- DETAILS SECTION --- */}
-        <Link href={`/product/${item.slug}`} className="flex flex-col gap-1 px-2.5 pt-1">
-            <h3 className="text-[13px] md:text-sm font-medium text-stone-700 leading-tight truncate">
+        <Link href={`/product/${item.slug}`} className="flex flex-col gap-1 px-0.5 mt-0.5 text-center md:text-left md:px-1">
+            <span className="text-[8px] md:text-[9px] text-stone-400 font-sans tracking-[0.15em] uppercase">
+                {item.category}
+            </span>
+
+            <h3 className="text-[12px] md:text-sm font-serif font-medium text-kankariya-charcoal leading-tight line-clamp-1">
                 {item.title}
             </h3>
             
-            <div className="flex items-center gap-2">
-                {/* 💰 DYNAMIC PRICE DISPLAY */}
-                <span className={`text-base md:text-lg font-bold ${isOutOfStock ? 'text-stone-400' : 'text-stone-900'}`}>
+            <div className="flex flex-col md:flex-row items-center md:justify-between mt-0.5 gap-1">
+                <span className={`text-[14px] md:text-[15px] font-sans font-semibold ${isOutOfStock ? 'text-stone-400' : 'text-kankariya-charcoal'}`}>
                     ₹{finalPrice.toLocaleString('en-IN')} 
                 </span>
                 
-                {/* Weight Info & Flat Rate Badge */}
                 <div className="flex items-center gap-1.5">
-                    {/* Wajan hamesha dikhayenge agar available hai */}
                     {item.weight > 0 && (
-                        <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] md:text-[10px] text-stone-500 font-sans">
                             {item.weight}g
                         </span>
                     )}
-                    
-                    {/* Agar fixed rate hai, toh ek chota sa badge alag se dikhega */}
                     {item.pricingType === 'fixed' && (
-                        <span className="text-[10px] text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded font-medium">
-                            Flat Rate
+                        <span className="text-[8px] md:text-[9px] text-kankariya-gold font-sans tracking-[0.05em] uppercase font-bold">
+                            • Fixed
                         </span>
                     )}
                 </div>
             </div>
-             <span className="text-[10px] text-stone-400 uppercase tracking-wider">
-                {item.category}
-            </span>
         </Link>
     </div>
   )
 }
 
-export default ProductCard
+export default ProductCard;

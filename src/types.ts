@@ -7,13 +7,13 @@ export interface ExtraOption {
 export interface Product {
     _id: string;
     title: string;
-    description?: string; // Add this for product info
+    description?: string; 
     
     // Core Logic
     weight: number;
     makingCharges: number;
 
-    // 👇 Naye Pricing Fields (In 2 lines se pricingType wali error chali jayegi) 👇
+    // Pricing Fields
     pricingType?: 'calculated' | 'fixed'; 
     fixedPrice?: number;
 
@@ -24,14 +24,18 @@ export interface Product {
     // Details
     slug: string; 
     imageUrl: string;
-    image?: any[]; // Gallery ke liye zaroori he
+    
+    // 👇 YAHAN CHANGE KIYA HAI (images array add ki hai hover ke liye)
+    image?: any[]; 
+    images?: string[]; // Isse ProductCard wala error chala jayega
+    
     category: string;
     isHotDeal?: boolean;
     stockQuantity: number;
 
     // Extras
-    extraOptions?: ExtraOption[];   // Sanity data ke liye
-    selectedExtras?: ExtraOption[]; // Selection store karne ke liye
+    extraOptions?: ExtraOption[];   
+    selectedExtras?: ExtraOption[]; 
 }
 
 export interface Address {

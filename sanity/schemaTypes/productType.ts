@@ -156,6 +156,12 @@ export default defineType({
       title: 'Description',
       type: 'text',
     }),
+    defineField({
+  name: 'isArchived',
+  title: 'Archive Product (Hide from Shop)',
+  type: 'boolean',
+  initialValue: false,
+}),
   ],
 
   // --- PREVIEW ---

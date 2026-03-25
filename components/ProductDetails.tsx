@@ -14,8 +14,8 @@ import { ExtraOption } from '@/src/types'
 import { calculateSilverPrice } from '@/utils/calculatePrice' 
 import Link from 'next/link'
 import ProductCard from './ProductCard' 
-import ReviewSection from '@/components/ReviewSection' 
-import ReviewList from '@/components/ReviewList' 
+// import ReviewSection from '@/components/ReviewSection' 
+// import ReviewList from '@/components/ReviewList' 
 
 const builder = imageUrlBuilder(client)
 function urlFor(source: any) { return builder.image(source) }
@@ -76,11 +76,25 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         const [rate, stock, suggested, reviewsData] = await Promise.all([
           client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
           client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id }),
+          
           client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]{
-            _id, title, "slug": slug.current, image, category, isHotDeal, stockQuantity, weight, makingCharges, pricingType, fixedPrice
+            _id, 
+            title, 
+            "slug": slug.current, 
+            "imageUrl": image[0].asset->url,
+            "images": image[].asset->url,
+            category, 
+            isHotDeal, 
+            stockQuantity, 
+            weight, 
+            makingCharges, 
+            pricingType, 
+            fixedPrice
           }`, { cat: product.category, id: product._id }),
+
           client.fetch(`*[_type == "review" && product._ref == $id && approved == true]{rating}`, { id: product._id })
         ]);
+
         setSilverRate(rate || 0);
         setRealTimeStock(stock || 0);
         setSuggestedProducts(suggested);
@@ -90,7 +104,11 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           const avg = (total / reviewsData.length).toFixed(1);
           setAvgRating({ score: avg, count: reviewsData.length });
         }
-      } catch (e) { console.error(e); } finally { setIsCheckingStock(false); }
+      } catch (e) { 
+        console.error("Error fetching related products:", e); 
+      } finally { 
+        setIsCheckingStock(false); 
+      }
     };
     fetchData();
   }, [product._id, product.category]);
@@ -103,18 +121,16 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     );
   };
 
-  // --- REUSABLE ADD TO CART LOGIC ---
   const handleAddToCart = () => {
     if (quantity > realTimeStock) return;
     // @ts-ignore
     addToCart({ ...product, price: unitPriceTotal, selectedExtras, imageUrl: selectedImage || "" }, quantity);
   };
 
-  // --- 👈 BUY NOW LOGIC (Skip Cart) ---
   const handleBuyNow = () => {
     if (quantity > realTimeStock) return;
     handleAddToCart();
-    router.push('/checkout'); // Direct to Payment Popup page
+    router.push('/checkout'); 
   };
 
   if (isCheckingStock && !silverRate) return <div className="h-[60vh] flex items-center justify-center font-serif italic text-stone-400 animate-pulse">Loading Kankariya Jewellers...</div>;
@@ -238,7 +254,6 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                 >
                   Add to Cart
                 </button>
-                {/* 👈 UPDATED BUY NOW BUTTON */}
                 <button 
                   onClick={handleBuyNow} 
                   disabled={isOutOfStock} 
@@ -272,8 +287,9 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         </div>
       </div>
 
-      {/* --- SECTIONS --- */}
-      <div className="mt-16"><ReviewSection productId={product._id} /></div>
+      {/* --- CUSTOMER REVIEWS COMMENTED OUT --- */}
+      {/* <div className="mt-16"><ReviewSection productId={product._id} /></div> 
+      */}
 
       {suggestedProducts.length > 0 && (
         <div className="mt-20 pt-10 border-t border-stone-100">
@@ -290,7 +306,8 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         </div>
       )}
 
-      <div className="mt-10"><ReviewList productId={product._id} /></div>
+      {/* <div className="mt-10"><ReviewList productId={product._id} /></div> 
+      */}
 
       {/* PRICE BREAKUP MODAL */}
       <AnimatePresence>

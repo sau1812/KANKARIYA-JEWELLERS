@@ -7,34 +7,55 @@ const writeClient = createClient({
   projectId,
   dataset,
   apiVersion,
-  token: process.env.SANITY_API_TOKEN, // 👈 Environment variable se token le raha hai
-  useCdn: false, // Fresh data ke liye CDN band
+  token: process.env.SANITY_API_TOKEN, 
+  useCdn: false, 
 });
 
 export async function POST(req: Request) {
   try {
-    // 👇 Admin Panel se ye 4 cheezein aa rahi hain
-    const { productId, stock, weight, makingCharges } = await req.json();
+    // 👇 Admin Panel se ab ye extra fields bhi handle honge
+    const { productId, stock, weight, makingCharges, fixedPrice, isArchived } = await req.json();
 
     if (!productId) {
       return NextResponse.json({ message: "Product ID required" }, { status: 400 });
     }
 
-    // Sanity Patch
-    await writeClient
+    // --- DATA PREPARATION ---
+    const updateData: any = {
+        stockQuantity: Number(stock),
+        weight: Number(weight),
+        makingCharges: Number(makingCharges),
+    };
+
+    // Agar Admin ne fixedPrice bheja hai toh use set karein
+    if (fixedPrice !== undefined) {
+        updateData.fixedPrice = Number(fixedPrice);
+    }
+
+    // 🛡️ ARCHIVE LOGIC: 
+    // Delete ki jagah hum is document par 'isArchived' flag laga denge
+    if (isArchived !== undefined) {
+        updateData.isArchived = Boolean(isArchived);
+        // Agar archive kar rahe hain toh stock automatically 0 kar dete hain
+        if (isArchived === true) updateData.stockQuantity = 0;
+    }
+
+    // Sanity Patch Execution
+    const result = await writeClient
       .patch(productId)
-      .set({ 
-          stockQuantity: Number(stock),
-          weight: Number(weight),
-          makingCharges: Number(makingCharges)
-          // Note: Hum 'price' update nahi kar rahe kyunki wo ab calculate hota hai
-      })
+      .set(updateData)
       .commit();
 
-    return NextResponse.json({ message: "Product Updated Successfully" }, { status: 200 });
+    return NextResponse.json({ 
+        message: "Product Updated Successfully", 
+        result 
+    }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update failed:", error);
-    return NextResponse.json({ message: "Error updating product" }, { status: 500 });
+    return NextResponse.json({ 
+        message: "Error updating product", 
+        error: error.message 
+    }, { status: 500 });
   }
 }

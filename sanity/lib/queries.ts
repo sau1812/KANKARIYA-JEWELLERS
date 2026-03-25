@@ -6,7 +6,8 @@ export const productCardFields = groq`
   _id,
   title,
   "slug": slug.current,
-  "imageUrl": image[0].asset->url,
+  "imageUrl": image[0].asset->url,      // Pehli image (Primary)
+  "images": image[].asset->url,         // Saari images ka array (Hover ke liye)
   category,
   isHotDeal,
   stockQuantity,
@@ -14,14 +15,13 @@ export const productCardFields = groq`
   makingCharges,
   originalPrice,
   pricingType, 
-  fixedPrice, // 👈 BAS YAHAN EK COMMA LAGANA THA
+  fixedPrice,
   extraOptions[]{
     optionName,
     price,
     description
   }
 `;
-
 // 2. Category ke hisaab se fetch karne wali query (ProductGrid ke liye)
 export const getProductsByCategoryQuery = groq`
   *[_type == "product" && category == $category]{
