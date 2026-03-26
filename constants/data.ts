@@ -27,17 +27,18 @@ export const headerData = [
     title: "Heritage Collective", // Thoda professional look ke liye Capitalize kar diya
     href: "#",
     submenu: [
-      { title: "Bracelets", href: "/catalog/Menbracelet" },
+      { title: "Bracelets", href: "/catalog/Bracelet" },
       // { title: "Women's bracelets", href: "/catalog/womenbracelet" },
       { title: "Necklace", href: "/catalog/womennecklace" },
       // { title: "Unisex bracelets", href: "/catalog/unisex-bracelets" },
       { title: "Silver coins", href: "/catalog/coins" },
       { title: "Chains", href: "/catalog/chains" },
+      { title: "Ring", href: "/catalog/Ring" },
       // { title: "Watches", href: "/catalog/watches" },
     ],
   },
   { title: "About us", href: "/about" },
-  { title: "Best seller 🔥", href: "/deal" }, 
+  // { title: "Best seller 🔥", href: "/deal" }, 
 ];
 
 export const productType = [

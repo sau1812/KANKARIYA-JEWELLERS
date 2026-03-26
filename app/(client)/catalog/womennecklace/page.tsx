@@ -11,14 +11,15 @@ interface Product {
   title: string;
   originalPrice: number;
   slug: string;
-  imageUrl: string;
+  image?: string;      // 🚀 Fixed: imageUrl ki jagah 'image' use kiya
+  hoverImage?: string; // 🚀 Fixed: Hover effect ke liye dusri image
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
   weight: number;
   makingCharges: number;
-  pricingType?: 'calculated' | 'fixed'; // 👈 Added
-  fixedPrice?: number;                  // 👈 Added
+  pricingType?: 'calculated' | 'fixed'; 
+  fixedPrice?: number;                  
   avgRating?: number; 
 }
 
@@ -36,23 +37,23 @@ export default function WomenNecklace() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        // ✅ FIXED QUERY: 'image' aur 'hoverImage' dono fetch kiye
         const productsQuery = `*[_type == "product" && category == "necklace" && gender == "women" && isArchived != true]{
           _id,
           title,
           originalPrice,
           "slug": slug.current,
-          "imageUrl": image[0].asset->url,
+          "image": image[0].asset->url,
+          "hoverImage": image[1].asset->url,
           category,
           isHotDeal,
           stockQuantity,
           weight,
           makingCharges,
-          pricingType, // 👈 Added
-          fixedPrice   // 👈 Added
+          pricingType,
+          fixedPrice
         }`;
 
-        // Reviews Query for rating calculation
         const reviewsQuery = `*[_type == "review" && approved == true]{
           rating,
           "productId": product._ref
@@ -64,7 +65,6 @@ export default function WomenNecklace() {
           client.fetch(reviewsQuery)
         ]);
 
-        // Client Side Rating Mapping
         const productsWithRatings = allProducts.map((product: any) => {
           const productReviews = allReviews.filter((r: any) => r.productId === product._id);
           const totalRating = productReviews.reduce((acc: number, curr: any) => acc + curr.rating, 0);
@@ -90,23 +90,20 @@ export default function WomenNecklace() {
   // --- FILTERING LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // ⚡ DYNAMIC PRICE CALCULATION (Updated for Fixed pricing)
       let basePrice = 0;
       if (product.pricingType === 'fixed') {
         basePrice = product.fixedPrice || 0;
       } else {
-        basePrice = (product.weight * silverRate) + product.makingCharges;
+        basePrice = ((product.weight || 0) * silverRate) + (product.makingCharges || 0);
       }
       
-      const finalPrice = basePrice + (basePrice * 0.03); // Including 3% GST
+      const finalPrice = basePrice + (basePrice * 0.03); 
 
-      // Price Filter
       let matchesPrice = true;
       if (priceRange === 'under5k') matchesPrice = finalPrice < 5000;
       else if (priceRange === '5k-10k') matchesPrice = finalPrice >= 5000 && finalPrice <= 10000;
       else if (priceRange === 'above10k') matchesPrice = finalPrice > 10000;
 
-      // Rating Filter
       const matchesRating = (product.avgRating || 0) >= minRating;
 
       return matchesPrice && matchesRating;
@@ -123,7 +120,9 @@ export default function WomenNecklace() {
         <div className="mb-8 border-b border-stone-200 pb-6 flex flex-col md:flex-row justify-between items-end gap-6">
            <div>
                <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Women's Necklaces</h1>
-               <p className="text-stone-500 text-sm max-w-lg">Graceful chains and stunning pendants designed exclusively for her. Handcrafted in Nashik.</p>
+               <p className="text-stone-500 text-sm max-w-lg italic font-serif">
+                 A legacy of purity and craftsmanship, meticulously handcrafted in the heart of Nashik.
+               </p>
            </div>
            
            <div className="flex items-center gap-2 text-stone-400 text-sm font-medium uppercase tracking-wider">
@@ -133,7 +132,6 @@ export default function WomenNecklace() {
 
         {/* --- FILTER CONTROLS --- */}
         <div className="flex flex-wrap gap-4 mb-10">
-          {/* Price Selector */}
           <div className="relative">
             <select 
               value={priceRange}
@@ -147,9 +145,6 @@ export default function WomenNecklace() {
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
           </div>
-
-          {/* Rating Selector */}
-         
 
           {(priceRange !== 'All' || minRating !== 0) && (
             <button 
@@ -165,7 +160,7 @@ export default function WomenNecklace() {
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} item={product} silverRate={silverRate} />
+              <ProductCard key={product._id} item={product as any} silverRate={silverRate} />
             ))}
           </div>
         ) : (

@@ -5,12 +5,15 @@ import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
 import { Filter, ChevronDown } from 'lucide-react'
 
+// Interface mein hoverImage add kar diya
 interface Product {
   _id: string;
   title: string;
   originalPrice: number;
   slug: string;
-  imageUrl: string;
+  image?: string; 
+  imageUrl?: string;
+  hoverImage?: string; 
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
@@ -24,8 +27,6 @@ export default function ManBracelet() {
   const [products, setProducts] = useState<Product[]>([]);
   const [silverRate, setSilverRate] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  // Sirf Price Range ka state bacha hai
   const [priceRange, setPriceRange] = useState('All');
 
   useEffect(() => {
@@ -33,13 +34,14 @@ export default function ManBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Basic product data fetch
+        // 🚀 FIX: 'hoverImage' add kiya aur 'image' key use ki hai backend compatibility ke liye
         const productsQuery = `*[_type == "product" && category == "chains" && (gender == "women" || gender == "unisex")]{
           _id,
           title,
           originalPrice,
           "slug": slug.current,
-          "imageUrl": image[0].asset->url,
+          "image": image[0].asset->url,
+          "hoverImage": image[1].asset->url, // ✅ Hover image fix
           category,
           isHotDeal,
           stockQuantity,
@@ -49,14 +51,13 @@ export default function ManBracelet() {
           fixedPrice
         }`;
 
-        // Ab sirf Rate aur Products fetch kar rahe hain (Reviews hata diya)
         const [rate, allProducts] = await Promise.all([
           client.fetch(rateQuery),
           client.fetch(productsQuery)
         ]);
 
         setSilverRate(rate || 0);
-        setProducts(allProducts); // Direct set kar diya bina mapping ke
+        setProducts(allProducts); 
       } catch (err) {
         console.error("Data fetch error:", err);
       } finally {
@@ -66,15 +67,16 @@ export default function ManBracelet() {
     fetchData();
   }, []);
 
+  // useMemo logic ko use karne ke liye pehle useState ko call ke baad rakha
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // ⚡ Price calculation logic
+      // Price calculation logic
       let basePrice = 0;
       
       if (product.pricingType === 'fixed') {
         basePrice = product.fixedPrice || 0;
       } else {
-        basePrice = (product.weight * silverRate) + product.makingCharges;
+        basePrice = ((product.weight || 0) * silverRate) + (product.makingCharges || 0);
       }
       
       const finalPrice = basePrice + (basePrice * 0.03); // 3% GST
@@ -89,10 +91,9 @@ export default function ManBracelet() {
     });
   }, [products, priceRange, silverRate]);
 
-  // Handle Loading State
   if (loading) return (
      <div className="h-screen flex items-center justify-center font-serif italic text-stone-400">
-         Loading Men's Watches...
+         Loading Men's Collection...
      </div>
   );
 
@@ -103,8 +104,8 @@ export default function ManBracelet() {
         {/* Header Section */}
         <div className="mb-8 border-b border-stone-200 pb-6 flex flex-col md:flex-row justify-between items-end gap-6">
            <div>
-               <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Men's Watches</h1>
-               <p className="text-stone-500 text-sm md:text-base max-w-lg">Bold, durable, and crafted for the modern man.</p>
+               <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Women's Chains</h1>
+               <p className="text-stone-500 text-sm md:text-base max-w-lg">Elegant, versatile, and designed for the modern woman.</p>
            </div>
            
            <div className="flex items-center gap-2 text-stone-400 text-sm font-medium uppercase tracking-wider">
@@ -142,7 +143,7 @@ export default function ManBracelet() {
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} item={product} silverRate={silverRate} />
+              <ProductCard key={product._id} item={product as any} silverRate={silverRate} />
             ))}
           </div>
         ) : (

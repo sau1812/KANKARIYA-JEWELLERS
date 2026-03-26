@@ -5,14 +5,12 @@ import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
 import { Filter, ChevronDown } from 'lucide-react'
 
-// Interface update
 interface Product {
   _id: string;
   title: string;
   originalPrice: number;
   slug: string;
-  image?: string;      // 🚀 Changed from imageUrl
-  hoverImage?: string; // 🚀 Added for hover effect
+  imageUrl: string;
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
@@ -22,10 +20,12 @@ interface Product {
   fixedPrice?: number;
 }
 
-export default function ManBracelet() {
+export default function MenChains() {
   const [products, setProducts] = useState<Product[]>([]);
   const [silverRate, setSilverRate] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Sirf Price Range ka state bacha hai
   const [priceRange, setPriceRange] = useState('All');
 
   useEffect(() => {
@@ -33,14 +33,13 @@ export default function ManBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // ✅ HOVER IMAGE FIX: 'image' aur 'hoverImage' dono fetch kiye
-        const productsQuery = `*[_type == "product" && category == "ring" && (gender == "men" || gender == "unisex") && isArchived != true]{
+        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "ring" && isArchived != true]{
           _id,
           title,
           originalPrice,
           "slug": slug.current,
-          "image": image[0].asset->url,
-          "hoverImage": image[1].asset->url,
+          "imageUrl": image[0].asset->url,
           category,
           isHotDeal,
           stockQuantity,
@@ -50,13 +49,14 @@ export default function ManBracelet() {
           fixedPrice
         }`;
 
+        // Ab sirf Rate aur Products fetch kar rahe hain (Reviews hata diya)
         const [rate, allProducts] = await Promise.all([
           client.fetch(rateQuery),
           client.fetch(productsQuery)
         ]);
 
         setSilverRate(rate || 0);
-        setProducts(allProducts); 
+        setProducts(allProducts); // Direct set kar diya bina mapping ke
       } catch (err) {
         console.error("Data fetch error:", err);
       } finally {
@@ -70,15 +70,18 @@ export default function ManBracelet() {
     if (!products || products.length === 0) return [];
 
     return products.filter((product) => {
+      // ⚡ Price calculation logic
       let basePrice = 0;
+      
       if (product.pricingType === 'fixed') {
         basePrice = product.fixedPrice || 0;
       } else {
-        basePrice = ((product.weight || 0) * silverRate) + (product.makingCharges || 0);
+        basePrice = (product.weight * silverRate) + product.makingCharges;
       }
       
       const finalPrice = basePrice + (basePrice * 0.03); // 3% GST
 
+      // Price Filter logic
       let matchesPrice = true;
       if (priceRange === 'under5k') matchesPrice = finalPrice < 5000;
       else if (priceRange === '5k-10k') matchesPrice = finalPrice >= 5000 && finalPrice <= 10000;
@@ -88,9 +91,10 @@ export default function ManBracelet() {
     });
   }, [products, priceRange, silverRate]);
 
+  // Handle Loading State
   if (loading) return (
      <div className="h-screen flex items-center justify-center font-serif italic text-stone-400">
-         Loading Men's Rings...
+         Loading silver rings...
      </div>
   );
 
@@ -101,8 +105,8 @@ export default function ManBracelet() {
         {/* Header Section */}
         <div className="mb-8 border-b border-stone-200 pb-6 flex flex-col md:flex-row justify-between items-end gap-6">
            <div>
-               <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Men's Rings</h1>
-               <p className="text-stone-500 text-sm md:text-base max-w-lg">Bold, durable, and crafted for the modern man.</p>
+               <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Silver Rings</h1>
+               <p className="text-stone-500 text-sm md:text-base max-w-lg">Pure, hallmarked silver rings for gifting, investment, and auspicious occasions.</p>
            </div>
            
            <div className="flex items-center gap-2 text-stone-400 text-sm font-medium uppercase tracking-wider">
@@ -140,14 +144,14 @@ export default function ManBracelet() {
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} item={product as any} silverRate={silverRate} />
+              <ProductCard key={product._id} item={product} silverRate={silverRate} />
             ))}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
              <div className="text-stone-300 mb-4 text-6xl font-serif">"</div>
-             <h3 className="text-xl font-medium text-stone-800 mb-2">No Matching Designs</h3>
-             <p className="text-stone-500 max-w-md">Try adjusting your filters to explore other premium pieces.</p>
+             <h3 className="text-xl font-medium text-stone-800 mb-2">No Matching Silver Rings</h3>
+             <p className="text-stone-500 max-w-md">Try adjusting your filters to explore our premium silver rings.</p>
           </div>
         )}
       </div>

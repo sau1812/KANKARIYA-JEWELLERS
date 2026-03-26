@@ -76,7 +76,7 @@ export default async function Home() {
          <div className='py-14 md:py-20'>
             <div className="text-center mb-10">
                <h2 className="text-3xl md:text-4xl font-serif text-stone-900 mb-3">Our Signature Collection</h2>
-               <p className="text-stone-500">Handcrafted pure silver jewellery from Kankariya Jewellers</p>
+               <p className="text-stone-500">A legacy of purity and craftsmanship, meticulously handcrafted in the heart of Nashik</p>
             </div>
             
             <Suspense fallback={<div className="text-center py-20 text-xl">Loading Latest Collection...</div>}>

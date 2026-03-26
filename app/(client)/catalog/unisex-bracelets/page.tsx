@@ -11,14 +11,15 @@ interface Product {
   title: string;
   originalPrice: number;
   slug: string;
-  imageUrl: string;
+  image?: string;      // 🚀 Changed to match card logic
+  hoverImage?: string; // 🚀 Added for hover effect
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
   weight: number;
   makingCharges: number;
-  pricingType?: 'calculated' | 'fixed'; // 👈 Naya Field Added
-  fixedPrice?: number;                  // 👈 Naya Field Added
+  pricingType?: 'calculated' | 'fixed';
+  fixedPrice?: number;
   avgRating?: number; 
 }
 
@@ -36,20 +37,21 @@ export default function UnisexBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        // ✅ HOVER IMAGE FIX: 'image' aur 'hoverImage' dono fetch kiye hain
         const productsQuery = `*[_type == "product" && category == "bracelet" && gender == "unisex" && isArchived != true]{
           _id,
           title,
           originalPrice,
           "slug": slug.current,
-          "imageUrl": image[0].asset->url,
+          "image": image[0].asset->url,
+          "hoverImage": image[1].asset->url,
           category,
           isHotDeal,
           stockQuantity,
           weight,
           makingCharges,
-          pricingType, // 👈 Naya Field Added
-          fixedPrice   // 👈 Naya Field Added
+          pricingType,
+          fixedPrice
         }`;
 
         // Reviews Query for calculation
@@ -90,12 +92,12 @@ export default function UnisexBracelet() {
   // --- FILTERING LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // ⚡ DYNAMIC PRICE CALCULATION (Fixed + Calculated logic added)
+      // ⚡ DYNAMIC PRICE CALCULATION
       let basePrice = 0;
       if (product.pricingType === 'fixed') {
         basePrice = product.fixedPrice || 0;
       } else {
-        basePrice = (product.weight * silverRate) + product.makingCharges;
+        basePrice = ((product.weight || 0) * silverRate) + (product.makingCharges || 0);
       }
       
       const finalPrice = basePrice + (basePrice * 0.03); // Including 3% GST
@@ -133,7 +135,6 @@ export default function UnisexBracelet() {
 
         {/* --- FILTER CONTROLS --- */}
         <div className="flex flex-wrap gap-4 mb-10">
-          {/* Price Selector */}
           <div className="relative">
             <select 
               value={priceRange}
@@ -148,7 +149,6 @@ export default function UnisexBracelet() {
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
           </div>
 
-          {/* Rating Selector */}
           <div className="relative">
             <select 
               value={minRating}
@@ -176,7 +176,7 @@ export default function UnisexBracelet() {
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} item={product} silverRate={silverRate} />
+              <ProductCard key={product._id} item={product as any} silverRate={silverRate} />
             ))}
           </div>
         ) : (

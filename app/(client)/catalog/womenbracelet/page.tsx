@@ -5,20 +5,20 @@ import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
 import { Filter, ChevronDown } from 'lucide-react'
 
-// 1. Product Type Definition
 interface Product {
   _id: string;
   title: string;
   originalPrice: number;
   slug: string;
-  imageUrl: string;
+  image?: string;      // 🚀 Changed from imageUrl to match Card logic
+  hoverImage?: string; // 🚀 Added for hover effect
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
   weight: number;
   makingCharges: number;
-  pricingType?: 'calculated' | 'fixed'; // 👈 Naya Field Added
-  fixedPrice?: number;                  // 👈 Naya Field Added
+  pricingType?: 'calculated' | 'fixed';
+  fixedPrice?: number;
   avgRating?: number; 
 }
 
@@ -27,7 +27,6 @@ export default function WomenBracelet() {
   const [silverRate, setSilverRate] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // --- FILTER STATES ---
   const [priceRange, setPriceRange] = useState('All');
   const [minRating, setMinRating] = useState(0);
 
@@ -36,23 +35,23 @@ export default function WomenBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        // ✅ HOVER IMAGE FIX: 'image' aur 'hoverImage' dono fetch kiye hain
         const productsQuery = `*[_type == "product" && category == "bracelet" && (gender == "women" || gender == "unisex") && isArchived != true]{
           _id,
           title,
           originalPrice,
           "slug": slug.current,
-          "imageUrl": image[0].asset->url,
+          "image": image[0].asset->url,
+          "hoverImage": image[1].asset->url,
           category,
           isHotDeal,
           stockQuantity,
           weight,
           makingCharges,
-          pricingType, // 👈 Added
-          fixedPrice   // 👈 Added
+          pricingType,
+          fixedPrice
         }`;
 
-        // Reviews Query for calculation
         const reviewsQuery = `*[_type == "review" && approved == true]{
           rating,
           "productId": product._ref
@@ -64,7 +63,6 @@ export default function WomenBracelet() {
           client.fetch(reviewsQuery)
         ]);
 
-        // Client Side Data Mapping
         const productsWithRatings = allProducts.map((product: any) => {
           const productReviews = allReviews.filter((r: any) => r.productId === product._id);
           const totalRating = productReviews.reduce((acc: number, curr: any) => acc + curr.rating, 0);
@@ -87,26 +85,22 @@ export default function WomenBracelet() {
     fetchData();
   }, []);
 
-  // --- FILTERING LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // ⚡ DYNAMIC PRICE CALCULATION (Handled for Fixed and Calculated pricing)
       let basePrice = 0;
       if (product.pricingType === 'fixed') {
         basePrice = product.fixedPrice || 0;
       } else {
-        basePrice = (product.weight * silverRate) + product.makingCharges;
+        basePrice = ((product.weight || 0) * silverRate) + (product.makingCharges || 0);
       }
       
-      const finalPrice = basePrice + (basePrice * 0.03); // + 3% GST
+      const finalPrice = basePrice + (basePrice * 0.03);
 
-      // Price Filter
       let matchesPrice = true;
       if (priceRange === 'under5k') matchesPrice = finalPrice < 5000;
       else if (priceRange === '5k-10k') matchesPrice = finalPrice >= 5000 && finalPrice <= 10000;
       else if (priceRange === 'above10k') matchesPrice = finalPrice > 10000;
 
-      // Rating Filter
       const matchesRating = (product.avgRating || 0) >= minRating;
 
       return matchesPrice && matchesRating;
@@ -119,7 +113,7 @@ export default function WomenBracelet() {
     <div className="bg-stone-50 min-h-screen py-12">
       <div className="container mx-auto px-4">
         
-        {/* --- Header Section --- */}
+        {/* Header Section */}
         <div className="mb-8 border-b border-stone-200 pb-6 flex flex-col md:flex-row justify-between items-end gap-6">
            <div>
                <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Women's Bracelets</h1>
@@ -131,9 +125,8 @@ export default function WomenBracelet() {
            </div>
         </div>
 
-        {/* --- FILTER CONTROLS --- */}
+        {/* Filter Controls */}
         <div className="flex flex-wrap gap-4 mb-10">
-          {/* Price Selector */}
           <div className="relative">
             <select 
               value={priceRange}
@@ -148,9 +141,6 @@ export default function WomenBracelet() {
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
           </div>
 
-          {/* Rating Selector */}
-        
-
           {(priceRange !== 'All' || minRating !== 0) && (
             <button 
               onClick={() => {setPriceRange('All'); setMinRating(0);}}
@@ -161,21 +151,20 @@ export default function WomenBracelet() {
           )}
         </div>
 
-        {/* --- Product Grid --- */}
+        {/* Product Grid */}
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} item={product} silverRate={silverRate} />
+              <ProductCard key={product._id} item={product as any} silverRate={silverRate} />
             ))}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 text-center">
              <div className="text-stone-300 mb-4 text-6xl font-serif italic">"</div>
              <h3 className="text-xl font-medium text-stone-800 mb-2">No Matching Collection</h3>
-             <p className="text-stone-500 max-w-md">We couldn't find any pieces matching your current filters. Try resetting them to see our full range.</p>
+             <p className="text-stone-500 max-w-md">We couldn't find any pieces matching your current filters. Try resetting them.</p>
           </div>
         )}
-
       </div>
     </div>
   )

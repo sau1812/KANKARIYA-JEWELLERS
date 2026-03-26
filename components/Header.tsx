@@ -58,7 +58,8 @@ const Header = () => {
   return (
     <header className='sticky top-0 w-full z-50 flex flex-col transition-all duration-500'>
       
-      <div className='w-full bg-[#FCFBF8]/95 backdrop-blur-2xl border-b border-gray-200'>
+      {/* 👇 YAHAN FIX KIYA HAI: relative aur z-20 add kiya taaki menu hamesha upar rahe */}
+      <div className='relative z-20 w-full bg-[#FCFBF8]/95 backdrop-blur-2xl border-b border-gray-200'>
         {/* --- TOP DYNAMIC ANNOUNCEMENT BAR --- */}
         <div 
           className={`w-full bg-[#F5F3EC] text-stone-600 font-sans tracking-[0.1em] md:tracking-[0.2em] text-center font-medium border-b border-gray-200 transition-all duration-500 overflow-hidden flex items-center justify-center
@@ -166,20 +167,21 @@ const Header = () => {
       {/* --- 3. THE "WOW" LIVE SILVER RATE BAR --- */}
       {silverRate !== null && (
         <div 
-          className={`relative w-full transition-all duration-700 ease-in-out flex items-center justify-center overflow-hidden shadow-[0_4px_15px_rgba(180,142,75,0.2)]
+          // 👇 YAHAN BHI FIX KIYA HAI: relative z-10 taaki ye hamesha Navbar (z-20) ke peeche rahe
+          className={`relative z-10 w-full transition-all duration-700 ease-in-out flex items-center justify-center overflow-hidden shadow-[0_4px_15px_rgba(180,142,75,0.2)]
             ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'}
           `}
         >
           {/* Base Rich Gold Gradient */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#B48E4B] via-[#E8D07C] to-[#B48E4B]"></div>
           
-          {/* Luxury Glass Shimmer Layer (Top light reflection) */}
+          {/* Luxury Glass Shimmer Layer */}
           <div className="absolute top-0 left-0 w-full h-[40%] bg-gradient-to-b from-white/40 to-transparent"></div>
           
           {/* Content */}
           <div className="relative z-10 flex items-center gap-2.5 py-1.5 md:py-2 px-4">
             
-            {/* Pro Live Indicator with Radar Ping */}
+            {/* Pro Live Indicator */}
             <span className="relative flex h-2 w-2 md:h-2.5 md:w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-full w-full bg-red-600 shadow-[0_0_5px_#dc2626]"></span>

@@ -5,12 +5,14 @@ import { client } from '@/sanity/lib/client'
 import ProductCard from '@/components/ProductCard'
 import { Filter, ChevronDown } from 'lucide-react'
 
+// Interface update
 interface Product {
   _id: string;
   title: string;
   originalPrice: number;
   slug: string;
-  imageUrl: string;
+  image?: string;      // 🚀 Changed from imageUrl
+  hoverImage?: string; // 🚀 Added for hover effect
   category: string;
   isHotDeal: boolean;
   stockQuantity: number;
@@ -24,8 +26,6 @@ export default function MenChains() {
   const [products, setProducts] = useState<Product[]>([]);
   const [silverRate, setSilverRate] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  // Sirf Price Range ka state bacha hai
   const [priceRange, setPriceRange] = useState('All');
 
   useEffect(() => {
@@ -33,13 +33,14 @@ export default function MenChains() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        // ✅ FIX: 'hoverImage' fetch line add ki hai aur image[0] ko "image" naam diya hai
         const productsQuery = `*[_type == "product" && category == "chains" && (gender == "men" || gender == "unisex") && isArchived != true]{
           _id,
           title,
           originalPrice,
           "slug": slug.current,
-          "imageUrl": image[0].asset->url,
+          "image": image[0].asset->url,
+          "hoverImage": image[1].asset->url, 
           category,
           isHotDeal,
           stockQuantity,
@@ -49,14 +50,13 @@ export default function MenChains() {
           fixedPrice
         }`;
 
-        // Ab sirf Rate aur Products fetch kar rahe hain (Reviews hata diya)
         const [rate, allProducts] = await Promise.all([
           client.fetch(rateQuery),
           client.fetch(productsQuery)
         ]);
 
         setSilverRate(rate || 0);
-        setProducts(allProducts); // Direct set kar diya bina mapping ke
+        setProducts(allProducts); 
       } catch (err) {
         console.error("Data fetch error:", err);
       } finally {
@@ -70,18 +70,15 @@ export default function MenChains() {
     if (!products || products.length === 0) return [];
 
     return products.filter((product) => {
-      // ⚡ Price calculation logic
       let basePrice = 0;
-      
       if (product.pricingType === 'fixed') {
         basePrice = product.fixedPrice || 0;
       } else {
-        basePrice = (product.weight * silverRate) + product.makingCharges;
+        basePrice = ((product.weight || 0) * silverRate) + (product.makingCharges || 0);
       }
       
       const finalPrice = basePrice + (basePrice * 0.03); // 3% GST
 
-      // Price Filter logic
       let matchesPrice = true;
       if (priceRange === 'under5k') matchesPrice = finalPrice < 5000;
       else if (priceRange === '5k-10k') matchesPrice = finalPrice >= 5000 && finalPrice <= 10000;
@@ -91,7 +88,6 @@ export default function MenChains() {
     });
   }, [products, priceRange, silverRate]);
 
-  // Handle Loading State
   if (loading) return (
      <div className="h-screen flex items-center justify-center font-serif italic text-stone-400">
          Loading Men's Chains...
@@ -144,7 +140,7 @@ export default function MenChains() {
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} item={product} silverRate={silverRate} />
+              <ProductCard key={product._id} item={product as any} silverRate={silverRate} />
             ))}
           </div>
         ) : (
