@@ -5,11 +5,9 @@ import ProductCard from './ProductCard'
 import { Product } from '@/src/types'
 import Image from 'next/image'
 import { productType } from '@/constants/data'
-import { motion } from 'framer-motion' 
-import { Clock, TrendingUp } from 'lucide-react' 
-import { getProductsByCategoryQuery } from '@/sanity/lib/queries'
 
-// --- 1. IMAGE MAPPING HELPER ---
+// 🚫 Yahan se 'getProductsByCategoryQuery' ka import hata diya gaya hai
+
 const getCategoryImage = (val: string) => {
   switch (val.toLowerCase()) {
     case 'ring': return 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=400&auto=format&fit=crop';
@@ -17,68 +15,37 @@ const getCategoryImage = (val: string) => {
     case 'earring': return 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=400&auto=format&fit=crop';
     case 'bracelet': return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop';
     case 'bangle': return 'https://images.unsplash.com/photo-1619119069152-a2b331eb392a?q=80&w=400&auto=format&fit=crop';
-    case 'coins': return 'https://images.unsplash.com/photo-1620766182966-c6eb5ed2b788?q=80&w=400&auto=format&fit=crop';
-    case 'chains': return 'https://images.unsplash.com/photo-1599643478514-4a4e0a6d17e5?q=80&w=400&auto=format&fit=crop'; 
+    case 'chains': return 'https://images.unsplash.com/photo-1588444837495-c6cfeb53f32d?q=80&w=400&auto=format&fit=crop'; 
     case 'watches': return 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?q=80&w=400&auto=format&fit=crop'; 
     default: return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop';
   }
 }
 
-// --- 2. CATEGORIES ARRAY BUILDER ---
-const categories = [
-  { 
-    name: 'All', 
-    value: 'All',
-    image: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=400&auto=format&fit=crop'
-  },
-  ...productType.map((item) => ({
-    name: item.title,
-    value: item.value,
-    image: getCategoryImage(item.value)
-  }))
-];
+const categories = productType.map((item) => ({
+  name: item.title,
+  value: item.value, 
+  image: getCategoryImage(item.value)
+}));
 
 interface ProductGridProps {
   products: Product[];
+  silverRate: number; 
 }
 
-export default function ProductGrid({ products: initialProducts }: ProductGridProps) {
-  // ✅ YAHAN BHI FILTER LAGAYA HAI for initial products
-  const [products, setProducts] = useState<Product[]>(
-    initialProducts?.filter((p: any) => p.isArchived !== true) || []
-  )
-  const [loading, setLoading] = useState(false)
-  const [selectedTab, setSelectedTab] = useState('All');
-  const [silverRate, setSilverRate] = useState(0); 
-  const [lastUpdated, setLastUpdated] = useState<string>(""); 
+export default function ProductGrid({ products: initialProducts, silverRate }: ProductGridProps) {
+  const defaultCategory = categories.length > 0 ? categories[0].value : 'ring';
+  const [selectedTab, setSelectedTab] = useState(defaultCategory); 
+  
+  const getInitialFilteredProducts = () => {
+    return initialProducts?.filter(p => p.category?.toLowerCase() === defaultCategory.toLowerCase()) || [];
+  };
+
+  const [products, setProducts] = useState<Product[]>(getInitialFilteredProducts());
+  const [loading, setLoading] = useState(false);
 
   const [cache, setCache] = useState<Record<string, Product[]>>({
-    // ✅ YAHAN BHI FILTER LAGAYA HAI for cache
-    'All': initialProducts?.filter((p: any) => p.isArchived !== true) || []
+    [defaultCategory]: getInitialFilteredProducts()
   });
-
-  useEffect(() => {
-    const fetchRate = async () => {
-        try {
-            const data = await client.fetch(`*[_type == "silverRate"][0]{ratePerGram, _updatedAt}`);
-            if (data) {
-                setSilverRate(data.ratePerGram || 0);
-                const date = new Date(data._updatedAt);
-                const formattedDate = date.toLocaleString('en-IN', {
-                  day: '2-digit',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
-                });
-                setLastUpdated(formattedDate);
-            }
-        } catch (err) {
-            console.error("Rate fetch error:", err);
-        }
-    };
-    fetchRate();
-  }, []);
 
   const handleTabClick = (value: string) => {
     if (selectedTab === value) return; 
@@ -87,42 +54,50 @@ export default function ProductGrid({ products: initialProducts }: ProductGridPr
 
   useEffect(() => {
     const fetchData = async () => {
-      if (selectedTab === 'All') {
-         setProducts(cache['All'] || initialProducts?.filter((p: any) => p.isArchived !== true));
-         return;
-      }
       if (cache[selectedTab]) {
         setProducts(cache[selectedTab]);
         return; 
       }
-      setLoading(true);
       
+      setLoading(true);
       const params = { category: selectedTab };
+      
+      // ✅ YAHAN FIX KIYA HAI: Direct wahi query likhi hai jisme 'hoverImage' aur Price ki calculation hai
+      const updatedCategoryQuery = `*[_type == "product" && category == $category && isArchived != true]{
+          _id, 
+          title, 
+          "image": image[0].asset->url, 
+          "hoverImage": image[1].asset->url,
+          "slug": slug.current,
+          category,
+          isHotDeal,
+          stockQuantity,
+          originalPrice,
+          weight,
+          makingCharges,
+          pricingType,
+          fixedPrice
+      }`;
+      
       try {
-        const data = await client.fetch(getProductsByCategoryQuery, params);
-        // ✅ FETCH HONE KE BAAD DATA KO FILTER KIYA HAI
-        const filteredData = data.filter((p: any) => p.isArchived !== true);
+        const data = await client.fetch(updatedCategoryQuery, params);
+        const fetchedProducts = data || [];
         
-        setProducts(filteredData);
-        setCache(prev => ({ ...prev, [selectedTab]: filteredData }));
+        setProducts(fetchedProducts);
+        setCache(prev => ({ ...prev, [selectedTab]: fetchedProducts }));
+        
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
         setLoading(false);
       }
     };
+    
     fetchData();
   }, [selectedTab]); 
 
   return (
     <div className="mt-10">
-        
-        {/* =========================================
-            LIVE SILVER RATE BANNER COMMENTED OUT
-        ========================================= */}
-        {/* {silverRate > 0 && ( ... )} */}
-
-        {/* --- CATEGORY TABS --- */}
         <div className="relative w-full mb-10">
             <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide px-2 md:justify-center">
                 {categories.map((cat) => {
@@ -147,6 +122,7 @@ export default function ProductGrid({ products: initialProducts }: ProductGridPr
                                         src={cat.image} 
                                         alt={cat.name}
                                         fill
+                                        sizes="90px"
                                         className="object-cover"
                                     />
                                 </div>
@@ -177,13 +153,15 @@ export default function ProductGrid({ products: initialProducts }: ProductGridPr
             )}
             {!loading && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
-                    {products.map((product) => (
-                        <ProductCard 
-                            key={product._id} 
-                            item={product} 
-                            silverRate={silverRate} 
-                        />
-                    ))}
+                    {products.map((product) => {
+                        return (
+                            <ProductCard 
+                                key={product._id} 
+                                item={product as any} 
+                                silverRate={silverRate} 
+                            />
+                        )
+                    })}
                 </div>
             )}
         </div>

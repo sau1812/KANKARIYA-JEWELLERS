@@ -1,49 +1,44 @@
-// sanity/lib/queries.ts (ya utils/queries.ts)
 import { groq } from "next-sanity";
 
-// 1. Common Fields Snippet: Ye wo fields hain jo har product card me chahiye hi chahiye
+// 1. Optimized Fields: Home page/Grid ke liye zaruri cheezein + Naye schema ke fields
 export const productCardFields = groq`
   _id,
   title,
   "slug": slug.current,
-  "imageUrl": image[0].asset->url,      // Pehli image (Primary)
-  "images": image[].asset->url,         // Saari images ka array (Hover ke liye)
+  "imageUrl": image[0].asset->url, 
   category,
-  isHotDeal,
-  stockQuantity,
+  // 👇 Yahan se saari NAYI fields add kar di hain
+  pricingType,
   weight,
   makingCharges,
-  originalPrice,
-  pricingType, 
   fixedPrice,
-  extraOptions[]{
-    optionName,
-    price,
-    description
-  }
+  // 👇 Purani fields (price, originalPrice) ab nikal di hain kyunki unki zarurat nahi 
+  isHotDeal,
+  stockQuantity
 `;
 
-// 2. Category ke hisaab se fetch karne wali query (ProductGrid ke liye)
+// 2. Category Query (Optimized)
 export const getProductsByCategoryQuery = groq`
   *[_type == "product" && category == $category && isArchived != true]{
     ${productCardFields}
   }
 `;
 
-// 3. Home page pe saare products fetch karne wali query (Initial load ke liye)
+// 3. All Products (Home Page ke liye - SABSE FAST)
 export const getAllProductsQuery = groq`
-  *[_type == "product" && isArchived != true]{
+  *[_type == "product" && isArchived != true] | order(_createdAt desc) {
     ${productCardFields}
   }
 `;
 
-// 4. Single Product ki puri details (Product Details Page ke liye)
+// 4. Single Product (Isme saari images mangwayein, kyunki ye alag page hai)
 export const getSingleProductQuery = groq`
   *[_type == "product" && slug.current == $slug && isArchived != true][0]{
     ${productCardFields},
     description,
-    "images": image[].asset->url,
+    "images": image[].asset->url, 
     gender,
+    // (weight, makingCharges, pricingType already productCardFields se aa jayenge, isliye yahan se hata sakte ho par rakhe bhi toh error nahi hai)
     extraOptions
   }
 `;

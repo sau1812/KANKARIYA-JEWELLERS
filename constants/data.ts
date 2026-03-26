@@ -3,16 +3,14 @@
 export const headerData = [
   { title: "Home", href: "/" },
   {
-    title: "Catalog",
+    title: "Women's", 
     href: "#",
     submenu: [
-      { title: "Bracelets", href: "/catalog/Menbracelet" },
-      // { title: "Women's bracelets", href: "/catalog/womenbracelet" },
+      { title: "Bracelets", href: "/catalog/womenbracelet" },
       { title: "Necklace", href: "/catalog/womennecklace" },
-      // { title: "Unisex bracelets", href: "/catalog/unisex-bracelets" },
-      { title: "Silver coins", href: "/catalog/coins" },
-      { title: "Chains", href: "/catalog/chains" },
-      // { title: "Watches", href: "/catalog/watches" },
+      { title: "Chains", href: "/catalog/women-chains" }, 
+      // { title: "Watches", href: "/catalog/women-watches" }, 
+      { title: "Ring", href: "/catalog/women-ring" }, 
     ],
   },
   {
@@ -26,14 +24,16 @@ export const headerData = [
     ],
   },
   {
-    title: "Women's", 
+    title: "Heritage Collective", // Thoda professional look ke liye Capitalize kar diya
     href: "#",
     submenu: [
-      { title: "Bracelets", href: "/catalog/womenbracelet" },
+      { title: "Bracelets", href: "/catalog/Menbracelet" },
+      // { title: "Women's bracelets", href: "/catalog/womenbracelet" },
       { title: "Necklace", href: "/catalog/womennecklace" },
-      { title: "Chains", href: "/catalog/women-chains" }, 
-      // { title: "Watches", href: "/catalog/women-watches" }, 
-      { title: "Ring", href: "/catalog/women-ring" }, 
+      // { title: "Unisex bracelets", href: "/catalog/unisex-bracelets" },
+      { title: "Silver coins", href: "/catalog/coins" },
+      { title: "Chains", href: "/catalog/chains" },
+      // { title: "Watches", href: "/catalog/watches" },
     ],
   },
   { title: "About us", href: "/about" },
@@ -46,7 +46,7 @@ export const productType = [
   { title: "Earring", value: "earring" },
   { title: "Bracelet", value: "bracelet" },
   { title: "Bangle", value: "bangle" },
-  { title: "Silver coins", value: "coins" },
+  // { title: "Silver coins", value: "coins" },
   { title: "Chains", value: "chains" },
   { title: "Watches", value: "watches" },
 ];
