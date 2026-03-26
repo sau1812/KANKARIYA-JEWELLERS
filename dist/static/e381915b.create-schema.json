@@ -281,6 +281,12 @@
       {
         "name": "description",
         "type": "text"
+      },
+      {
+        "initialValue": false,
+        "name": "isArchived",
+        "type": "boolean",
+        "title": "Archive Product (Hide from Shop)"
       }
     ],
     "name": "product",
@@ -1005,30 +1011,32 @@
       {
         "name": "title",
         "type": "string",
-        "title": "Project Title"
+        "title": "Slider Title"
       },
       {
         "of": [
           {
             "options": {
-              "accept": "video/*"
+              "hotspot": true
             },
             "fields": [
               {
+                "description": "Image me kya hai wo describe karein (e.g., \"Diamond Necklace by Kankariya Jewellers\")",
                 "name": "alt",
                 "type": "string",
-                "title": "Alt Text"
+                "title": "Alt Text (SEO ke liye zaroori)"
               }
             ],
-            "type": "file"
+            "type": "image"
           }
         ],
-        "name": "videos",
+        "name": "images",
         "type": "array",
-        "title": "Slider Videos"
+        "title": "Slider Images"
       }
     ],
-    "name": "videoSlider",
-    "type": "document"
+    "name": "imageSlider",
+    "type": "document",
+    "title": "Premium Image Slider"
   }
 ]

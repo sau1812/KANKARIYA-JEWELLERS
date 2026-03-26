@@ -77,7 +77,8 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           client.fetch(`*[_type == "silverRate"][0].ratePerGram`),
           client.fetch(`*[_type == "product" && _id == $id][0].stockQuantity`, { id: product._id }),
           
-          client.fetch(`*[_type == "product" && category == $cat && _id != $id][0...4]{
+          // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+          client.fetch(`*[_type == "product" && category == $cat && _id != $id && isArchived != true][0...4]{
             _id, 
             title, 
             "slug": slug.current, 
@@ -127,10 +128,24 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     addToCart({ ...product, price: unitPriceTotal, selectedExtras, imageUrl: selectedImage || "" }, quantity);
   };
 
+  // ✅ UPDATED BUY NOW FUNCTION
   const handleBuyNow = () => {
     if (quantity > realTimeStock) return;
-    handleAddToCart();
-    router.push('/checkout'); 
+    
+    // 1. Sirf current product ka data banayein
+    const singleBuyItem = {
+      ...product, 
+      price: unitPriceTotal, 
+      selectedExtras, 
+      imageUrl: selectedImage || "",
+      quantity: quantity
+    };
+
+    // 2. Isko Session Storage me save kar lein temporary
+    sessionStorage.setItem('buyNowItem', JSON.stringify([singleBuyItem]));
+
+    // 3. Checkout page par redirect karein ek special 'query' ke sath
+    router.push('/checkout?buyType=direct'); 
   };
 
   if (isCheckingStock && !silverRate) return <div className="h-[60vh] flex items-center justify-center font-serif italic text-stone-400 animate-pulse">Loading Kankariya Jewellers...</div>;

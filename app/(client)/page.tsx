@@ -1,7 +1,7 @@
 import React from 'react'
 import Container from '@/components/Container'
 import HomeBanner from '@/components/HomeBanner'
-import VideoSlider from '@/components/VideoSlider' // 👈 NAYA IMPORT YAHAN ADD KIYA
+import VideoSlider from '@/components/VideoSlider' 
 import ProductGrid from '@/components/ProductGrid1' 
 import { client } from '@/sanity/lib/client'
 import { getAllProductsQuery } from '@/sanity/lib/queries'
@@ -9,7 +9,11 @@ import { getAllProductsQuery } from '@/sanity/lib/queries'
 // 👇 Server Side Data Fetching Function
 async function getProducts() {
   const data = await client.fetch(getAllProductsQuery, {}, { next: { revalidate: 60 } });
-  return data;
+  
+  // ✅ YAHAN FILTER LAGA DIYA: Archived products ko Homepage se hata diya
+  const filteredData = data?.filter((product: any) => product.isArchived !== true) || [];
+  
+  return filteredData;
 }
 
 export default async function Home() {

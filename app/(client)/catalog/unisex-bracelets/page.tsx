@@ -36,8 +36,8 @@ export default function UnisexBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Product Query (Updated to fetch new fields)
-        const productsQuery = `*[_type == "product" && category == "bracelet" && gender == "unisex"]{
+        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "bracelet" && gender == "unisex" && isArchived != true]{
           _id,
           title,
           originalPrice,

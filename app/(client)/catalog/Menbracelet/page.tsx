@@ -33,8 +33,8 @@ export default function ManBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Basic product data fetch
-        const productsQuery = `*[_type == "product" && category == "bracelet" && (gender == "men" || gender == "unisex")]{
+        // ✅ YAHAN CHANGE KIYA HAI: category "bracelet" ki, aur isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "bracelet" && (gender == "men" || gender == "unisex") && isArchived != true]{
           _id,
           title,
           originalPrice,
@@ -67,6 +67,8 @@ export default function ManBracelet() {
   }, []);
 
   const filteredProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+
     return products.filter((product) => {
       // ⚡ Price calculation logic
       let basePrice = 0;

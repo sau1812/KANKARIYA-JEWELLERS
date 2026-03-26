@@ -23,7 +23,7 @@ export default function AdminProducts() {
         try {
             const rateData = await client.fetch(`*[_type == "silverRate"][0].ratePerGram`);
             setSilverRate(rateData || 0);
-            const query = `*[_type == "product"] | order(_createdAt desc) {
+            const query = `*[_type == "product" && isArchived != true] | order(_createdAt desc) {
                 _id, title, stockQuantity, image, category, weight, makingCharges, pricingType, fixedPrice
             }`;
             const data = await client.fetch(query);
@@ -63,7 +63,7 @@ export default function AdminProducts() {
      }
   };
 
-  // --- DELETE PRODUCT FUNCTION ---
+  // --- DELETE PRODUCT FUNCTION (Fixed to Archive) ---
   const handleDeleteProduct = async (id: string, title: string) => {
     const confirmArchive = confirm(`Archive "${title}"? This will hide it from the website.`);
     if (!confirmArchive) return;
@@ -75,12 +75,12 @@ export default function AdminProducts() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
                 productId: id, 
-                isArchived: true, // 👈 Ye hum API ko bhej rahe hain
-                stock: 0          // Archive karte waqt stock zero karna safe rehta hai
+                isArchived: true, // 👈 Telling API to archive it
             }),
         });
 
         if (response.ok) {
+            // Remove from the current admin view list
             setProducts(prev => prev.filter(p => p._id !== id));
             alert("📦 Product Archived!");
         } else {

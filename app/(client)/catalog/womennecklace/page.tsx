@@ -36,8 +36,8 @@ export default function WomenNecklace() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Product Query for Necklaces (Updated with new fields)
-        const productsQuery = `*[_type == "product" && category == "necklace" && gender == "women"]{
+        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "necklace" && gender == "women" && isArchived != true]{
           _id,
           title,
           originalPrice,

@@ -13,7 +13,6 @@ const writeClient = createClient({
 
 export async function POST(req: Request) {
   try {
-    // 👇 Admin Panel se ab ye extra fields bhi handle honge
     const { productId, stock, weight, makingCharges, fixedPrice, isArchived } = await req.json();
 
     if (!productId) {
@@ -21,19 +20,15 @@ export async function POST(req: Request) {
     }
 
     // --- DATA PREPARATION ---
-    const updateData: any = {
-        stockQuantity: Number(stock),
-        weight: Number(weight),
-        makingCharges: Number(makingCharges),
-    };
+    // ✅ FIX: Khaali object se start karein aur sirf wahi update karein jo frontend se aaya hai
+    const updateData: any = {};
 
-    // Agar Admin ne fixedPrice bheja hai toh use set karein
-    if (fixedPrice !== undefined) {
-        updateData.fixedPrice = Number(fixedPrice);
-    }
+    if (stock !== undefined) updateData.stockQuantity = Number(stock);
+    if (weight !== undefined) updateData.weight = Number(weight);
+    if (makingCharges !== undefined) updateData.makingCharges = Number(makingCharges);
+    if (fixedPrice !== undefined) updateData.fixedPrice = Number(fixedPrice);
 
     // 🛡️ ARCHIVE LOGIC: 
-    // Delete ki jagah hum is document par 'isArchived' flag laga denge
     if (isArchived !== undefined) {
         updateData.isArchived = Boolean(isArchived);
         // Agar archive kar rahe hain toh stock automatically 0 kar dete hain

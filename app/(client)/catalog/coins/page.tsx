@@ -33,8 +33,8 @@ export default function MenChains() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Basic product data fetch (Category updated to "chains")
-        const productsQuery = `*[_type == "product" && category == "coins"]{
+        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "coins" && isArchived != true]{
           _id,
           title,
           originalPrice,
@@ -67,6 +67,8 @@ export default function MenChains() {
   }, []);
 
   const filteredProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+
     return products.filter((product) => {
       // ⚡ Price calculation logic
       let basePrice = 0;
@@ -104,7 +106,7 @@ export default function MenChains() {
         <div className="mb-8 border-b border-stone-200 pb-6 flex flex-col md:flex-row justify-between items-end gap-6">
            <div>
                <h1 className="text-3xl md:text-4xl font-serif text-stone-900 mb-2">Silver Coins</h1>
-               <p className="text-stone-500 text-sm md:text-base max-w-lg">Strong, classic, and meticulously crafted pure silver chains for everyday wear.</p>
+               <p className="text-stone-500 text-sm md:text-base max-w-lg">Pure, hallmarked silver coins for gifting, investment, and auspicious occasions.</p>
            </div>
            
            <div className="flex items-center gap-2 text-stone-400 text-sm font-medium uppercase tracking-wider">

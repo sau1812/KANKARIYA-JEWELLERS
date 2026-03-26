@@ -20,7 +20,7 @@ interface Product {
   fixedPrice?: number;
 }
 
-export default function ManBracelet() {
+export default function MensWatches() { // Component ka naam bhi theek kar diya (Optional tha)
   const [products, setProducts] = useState<Product[]>([]);
   const [silverRate, setSilverRate] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -33,8 +33,8 @@ export default function ManBracelet() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Basic product data fetch
-        const productsQuery = `*[_type == "product" && category == "ring" && (gender == "women" || gender == "unisex")]{
+        // ✅ YAHAN CHANGE KIYA HAI: category "watches", gender "men", aur isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "watches" && (gender == "men" || gender == "unisex") && isArchived != true]{
           _id,
           title,
           originalPrice,
@@ -67,6 +67,8 @@ export default function ManBracelet() {
   }, []);
 
   const filteredProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+
     return products.filter((product) => {
       // ⚡ Price calculation logic
       let basePrice = 0;

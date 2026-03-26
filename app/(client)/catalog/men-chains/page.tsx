@@ -33,8 +33,8 @@ export default function MenChains() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Basic product data fetch (Category updated to "chains")
-        const productsQuery = `*[_type == "product" && category == "chains" && (gender == "men" || gender == "unisex")]{
+        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "chains" && (gender == "men" || gender == "unisex") && isArchived != true]{
           _id,
           title,
           originalPrice,
@@ -67,6 +67,8 @@ export default function MenChains() {
   }, []);
 
   const filteredProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+
     return products.filter((product) => {
       // ⚡ Price calculation logic
       let basePrice = 0;

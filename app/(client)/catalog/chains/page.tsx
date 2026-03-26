@@ -33,8 +33,8 @@ export default function MenChains() {
       try {
         const rateQuery = `*[_type == "silverRate"][0].ratePerGram`;
         
-        // Basic product data fetch (Category updated to "chains")
-        const productsQuery = `*[_type == "product" && category == "chains"]{
+        // ✅ YAHAN CHANGE KIYA HAI: isArchived != true add kiya
+        const productsQuery = `*[_type == "product" && category == "chains" && isArchived != true]{
           _id,
           title,
           originalPrice,
@@ -67,6 +67,10 @@ export default function MenChains() {
   }, []);
 
   const filteredProducts = useMemo(() => {
+    // Ye useMemo tabhi run hoga jab products, priceRange ya silverRate change hoga
+    // Agar initial fetch khali array laata hai toh ye return bhi khali array karega
+    if (!products || products.length === 0) return [];
+    
     return products.filter((product) => {
       // ⚡ Price calculation logic
       let basePrice = 0;

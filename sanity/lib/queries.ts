@@ -22,23 +22,24 @@ export const productCardFields = groq`
     description
   }
 `;
+
 // 2. Category ke hisaab se fetch karne wali query (ProductGrid ke liye)
 export const getProductsByCategoryQuery = groq`
-  *[_type == "product" && category == $category]{
+  *[_type == "product" && category == $category && isArchived != true]{
     ${productCardFields}
   }
 `;
 
 // 3. Home page pe saare products fetch karne wali query (Initial load ke liye)
 export const getAllProductsQuery = groq`
-  *[_type == "product"]{
+  *[_type == "product" && isArchived != true]{
     ${productCardFields}
   }
 `;
 
 // 4. Single Product ki puri details (Product Details Page ke liye)
 export const getSingleProductQuery = groq`
-  *[_type == "product" && slug.current == $slug][0]{
+  *[_type == "product" && slug.current == $slug && isArchived != true][0]{
     ${productCardFields},
     description,
     "images": image[].asset->url,

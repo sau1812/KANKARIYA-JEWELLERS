@@ -43,14 +43,18 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ products: initialProducts }: ProductGridProps) {
-  const [products, setProducts] = useState<Product[]>(initialProducts || [])
+  // ✅ YAHAN BHI FILTER LAGAYA HAI for initial products
+  const [products, setProducts] = useState<Product[]>(
+    initialProducts?.filter((p: any) => p.isArchived !== true) || []
+  )
   const [loading, setLoading] = useState(false)
   const [selectedTab, setSelectedTab] = useState('All');
   const [silverRate, setSilverRate] = useState(0); 
   const [lastUpdated, setLastUpdated] = useState<string>(""); 
 
   const [cache, setCache] = useState<Record<string, Product[]>>({
-    'All': initialProducts 
+    // ✅ YAHAN BHI FILTER LAGAYA HAI for cache
+    'All': initialProducts?.filter((p: any) => p.isArchived !== true) || []
   });
 
   useEffect(() => {
@@ -84,7 +88,7 @@ export default function ProductGrid({ products: initialProducts }: ProductGridPr
   useEffect(() => {
     const fetchData = async () => {
       if (selectedTab === 'All') {
-         setProducts(cache['All'] || initialProducts);
+         setProducts(cache['All'] || initialProducts?.filter((p: any) => p.isArchived !== true));
          return;
       }
       if (cache[selectedTab]) {
@@ -96,8 +100,11 @@ export default function ProductGrid({ products: initialProducts }: ProductGridPr
       const params = { category: selectedTab };
       try {
         const data = await client.fetch(getProductsByCategoryQuery, params);
-        setProducts(data);
-        setCache(prev => ({ ...prev, [selectedTab]: data }));
+        // ✅ FETCH HONE KE BAAD DATA KO FILTER KIYA HAI
+        const filteredData = data.filter((p: any) => p.isArchived !== true);
+        
+        setProducts(filteredData);
+        setCache(prev => ({ ...prev, [selectedTab]: filteredData }));
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
@@ -113,46 +120,7 @@ export default function ProductGrid({ products: initialProducts }: ProductGridPr
         {/* =========================================
             LIVE SILVER RATE BANNER COMMENTED OUT
         ========================================= */}
-        {/* {silverRate > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center mb-14 px-4"
-          >
-            <div className="inline-flex flex-col md:flex-row items-center gap-4 md:gap-10 bg-white border border-rose-100 shadow-2xl shadow-rose-100/50 px-10 py-6 rounded-[2.5rem] relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-600"></div>
-              <div className="flex items-center gap-5">
-                <div className="relative flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-600"></span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[11px] uppercase tracking-[0.25em] text-stone-400 font-black leading-none mb-2">Live Silver Market</span>
-                  <div className="flex items-center gap-3">
-                    <TrendingUp size={24} className="text-rose-600" />
-                    <span className="text-3xl md:text-5xl font-serif font-black text-stone-900 tracking-tighter">
-                      ₹{silverRate.toLocaleString('en-IN')}<span className="text-lg font-medium text-stone-400 ml-1">/g</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="hidden md:block w-px h-16 bg-stone-100"></div>
-              <div className="flex items-center gap-4 text-stone-500">
-                <div className="p-3 bg-stone-50 rounded-2xl">
-                  <Clock size={20} className="text-stone-400" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-black text-stone-400 mb-1">Last Verified</span>
-                  <span className="text-sm md:text-base font-bold tabular-nums text-stone-700">{lastUpdated}</span>
-                </div>
-              </div>
-            </div>
-            <p className="mt-4 text-[10px] text-stone-400 uppercase tracking-[0.3em] font-bold">
-              *Real-time pricing for Kankariya Jewellers nashik
-            </p>
-          </motion.div>
-        )}
-        */}
+        {/* {silverRate > 0 && ( ... )} */}
 
         {/* --- CATEGORY TABS --- */}
         <div className="relative w-full mb-10">
